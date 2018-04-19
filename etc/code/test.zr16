@@ -1,0 +1,8 @@
+        mov r0, 0x07
+        mov r1, r0
+        mov r2, r1
+        mov r3, r2
+        mov r0, 0x49
+        mov r4, r0
+loop:   add r4, r3
+        jmp loop
