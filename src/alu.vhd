@@ -52,7 +52,11 @@ begin
 
         case (op) is
 
-            when "0000" => -- SUM
+            when "0000" => -- ALU becomes a wire
+
+                w_out1 := in1;
+
+            when "0001" => -- SUM
 
                 if (uc = '1' and Cin = '1') then
                     resp := in1_ext + in2_ext + 1;
