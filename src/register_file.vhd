@@ -54,26 +54,17 @@ begin
     idx_o <= to_integer(unsigned(in1));
     idx_d <= to_integer(unsigned(in2));
 
-    reg_rw_ctrl : process (clk) is
+    reg_rw_ctrl : process (rw, addro, idx_o, idx_d) is
     begin
-        if (rising_edge(clk)) then
-            ro_reg <= rf(idx_o);
-            if (rw = '1') then                  -- write
-                if (addro = "00") then          -- mov: reg -> reg
-                    rf(idx_d) <= rf(idx_o);
-                    rd_reg    <= rf(idx_o);
-                elsif (addro = "01") then       -- mov: (reg) -> reg
-                    rf(idx_d) <= alu;
-                    rd_reg    <= alu;
-                elsif (addro = "10") then       -- mov: (mem) -> reg0
-                    rf(0)  <= alu;
-                    rd_reg <= alu;
-                elsif (addro = "11") then       -- mov: immed -> reg0
-                    rf(0)  <= in2 & in1;
-                    rd_reg <= in2 & in1;
-                end if;
-            else                                -- read
-                rd_reg <= rf(idx_d);            -- rd = r(in2)
+        if (rw = '1') then                  -- write
+            if (addro = "00") then          -- mov: reg -> reg
+                rf(idx_d) <= alu;
+            elsif (addro = "01") then       -- mov: (reg) -> reg
+                rf(idx_d) <= alu;
+            elsif (addro = "10") then       -- mov: (mem) -> reg0
+                rf(0)  <= alu;
+            elsif (addro = "11") then       -- mov: immed -> reg0
+                rf(0)  <= in2 & in1;
             end if;
         end if;
     end process;
@@ -104,8 +95,8 @@ begin
         end if;
     end process;
 
-    ro  <= ro_reg;
-    rd  <= rd_reg;
+    ro  <= rf(idx_o);
+    rd  <= rf(idx_d);
     r13 <= rf(13);
     r14 <= rf(14);
     r15 <= rf(15);
