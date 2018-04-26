@@ -1,11 +1,11 @@
 ---------------------------------------------------------------------------
 -- Company     : Universidade Federal de Santa Catarina
 -- Author(s)   : Victor H B Preuss
--- 
+--
 -- Creation Date : 14/04/2018
 -- File          : main.vhd
 --
--- Abstract : 
+-- Abstract :
 --
 ---------------------------------------------------------------------------
 library ieee;
@@ -14,7 +14,7 @@ use ieee.numeric_std.all;
 use std.textio.all;
 
 ---------------------------------------------------------------------------
-entity main is 
+entity main is
 end entity;
 
 ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ architecture arch of main is
         data    : out std_logic_vector(DATA_SIZE-1 downto 0)
     );
     end component;
-    
+
     component mux2 is
     generic (
         LENGTH : integer
@@ -64,7 +64,7 @@ architecture arch of main is
         out1 : out std_logic_vector(LENGTH-1 downto 0)
     );
     end component;
-    
+
     component mux8 is
     generic (
         LENGTH : integer
@@ -80,7 +80,7 @@ architecture arch of main is
         in7  : in std_logic_vector(LENGTH-1 downto 0);
         in8  : in std_logic_vector(LENGTH-1 downto 0);
         out1 : out std_logic_vector(LENGTH-1 downto 0)
-    );   
+    );
     end component;
 
     component register_file is
@@ -92,6 +92,8 @@ architecture arch of main is
         in1     : in std_logic_vector(3 downto 0);
         in2     : in std_logic_vector(3 downto 0);
         alu     : in std_logic_vector(7 downto 0);
+        flags   : in std_logic_vector(2 downto 0);
+        flctrl  : in std_logic;
         ro      : out std_logic_vector(7 downto 0);
         rd      : out std_logic_vector(7 downto 0);
         r13     : out std_logic_vector(7 downto 0);
@@ -101,19 +103,34 @@ architecture arch of main is
     );
     end component;
 
+    component alu is
+    port (
+        op      : in std_logic_vector(3 downto 0);
+        Cin     : in std_logic;
+        uc      : in std_logic;
+        ed      : in std_logic;
+        in1     : in std_logic_vector(7 downto 0);
+        in2     : in std_logic_vector(7 downto 0);
+        out1    : out std_logic_vector(7 downto 0);
+        Z       : out std_logic;
+        Cout    : out std_logic;
+        V_P     : out std_logic
+    );
+    end component;
+
     -- the rom memory is 1024x16 and the addresses are 10 bits long
     constant ROM_ADDR   : integer := 10;
     constant ROM_DATA   : integer := 16;
     constant ROM_SIZE   : integer := 1024;
 
     -- opcodes
-    constant JMP  : std_logic_vector(3 downto 0) := "0000"; 
+    constant JMP  : std_logic_vector(3 downto 0) := "0000";
     constant ADD  : std_logic_vector(3 downto 0) := "1000";
-    constant MOV  : std_logic_vector(3 downto 0) := "1101"; 
+    constant MOV  : std_logic_vector(3 downto 0) := "1101";
 
     -- clock
     signal clk : std_logic := '0';
-    
+
     -- rom inputs
     signal romaddr : std_logic_vector(9 downto 0) := (others => '0');
     signal romdata : std_logic_vector(15 downto 0) := (others => '0');
@@ -123,19 +140,22 @@ architecture arch of main is
     signal pcctrl  : std_logic_vector(2 downto 0) := "000";
     signal ramrw   : std_logic := '0'; -- RAM R/W flag
     signal regrw   : std_logic := '0'; -- registers R/W flag
+
+    signal aluctrl : std_logic_vector(3 downto 0) := (others => '0');
+    signal aluflctrl : std_logic := '0';
     signal aluoctrl : std_logic_vector(2 downto 0) := (others => '0');
     signal aludctrl : std_logic := '0';
-    
+
     -- instruction register
     signal instruction : std_logic_vector(15 downto 0) := (others => '0');
- 
+
     -- instruction decode
     alias opcode      : std_logic_vector(3 downto 0) is instruction(15 downto 12); -- opcode
 
     -- the below definitions are for instructions of type MOV, ADD
     alias addrmoded   : std_logic_vector(1 downto 0) is instruction(11 downto 10); -- addrmode of dest
     alias addrmodeo   : std_logic_vector(1 downto 0) is instruction(9 downto 8);   -- addrmode of orig
-    
+
     alias dest    : std_logic_vector(3 downto 0) is instruction(7 downto 4);   -- destination
     alias orig    : std_logic_vector(3 downto 0) is instruction(3 downto 0);   -- origin
 
@@ -156,11 +176,11 @@ architecture arch of main is
     -- alu signals
     signal aluin1 : std_logic_vector(7 downto 0) := (others => '0');
     signal aluin2 : std_logic_vector(7 downto 0) := (others => '0');
-
     signal aluout : std_logic_vector(7 downto 0) := (others => '0');
-    
+    signal aluflags : std_logic_vector(2 downto 0) := (others => '0');
+
     -- control unit state machine
-    type state_t is (RESET, FETCH_1, FETCH_2, DECODE, MOV_1, MOV_2, ADD_1, ADD_2, JMP_1, JMP_2, HALT);
+    type state_t is (RESET, FETCH_1, FETCH_2, DECODE, MOV_1, MOV_2, ADD_1, ADD_2, ADD_3, JMP_1, JMP_2, HALT);
     signal state : state_t := RESET;
 
 begin
@@ -198,6 +218,8 @@ begin
         in1     => orig,
         in2     => dest,
         alu     => aluout,
+        flags   => aluflags,
+        flctrl  => aluflctrl,
         ro      => ro,
         rd      => rd,
         r13     => r13,
@@ -228,15 +250,29 @@ begin
         out1    => aluin2
     );
 
+    alu_inst : alu
+    port map (
+        op      => aluctrl,
+        Cin     => r15(7),
+        uc      => r15(2),
+        ed      => r15(1),
+        in1     => aluin1,
+        in2     => aluin2,
+        out1    => aluout,
+        Z       => aluflags(2),
+        Cout    => aluflags(1),
+        V_P     => aluflags(0)
+    );
+
     stimulus : process (clk) is
-  
+
         variable L : line;
 
     begin
         if (rising_edge(clk)) then
             case (state) is
                 when RESET =>
-                    
+
                     -- TODO: reset ram, registers and control flags
                     state <= FETCH_1;
 
@@ -258,16 +294,16 @@ begin
 
                     write(L, to_hstring(instruction));
                     writeline(output, L);
-                    
+
                     case (opcode) is
                         when MOV => state <= MOV_1;
                         when ADD => state <= ADD_1;
                         when JMP => state <= JMP_1;
                         when others => state <= HALT;
                     end case;
-                
+
                 when MOV_1 =>
-                    
+
                     regrw <= '1';
 
                     state <= MOV_2;
@@ -279,15 +315,17 @@ begin
                     state <= FETCH_1;
 
                 when ADD_1 =>
-                    
+
                     write(L, to_hstring(ro));
                     writeline(output, L);
                     write(L, to_hstring(rd));
                     writeline(output, L);
 
-                    aluout <= std_logic_vector(unsigned(rd) + unsigned(ro));
-                    
-                    regrw <= '1';      -- set registers to write 
+                    aluoctrl <= "100";
+                    aludctrl <= '1';
+                    aluctrl  <= "0000";
+
+                    regrw <= '1';      -- set registers to write
                     addrmodeo <= "01"; -- writes alu to dest register
 
                     state <= ADD_2;
@@ -295,19 +333,19 @@ begin
                 when ADD_2 =>
 
                     regrw <= '0';      -- set registers back to read mode
-                    
+
                     state <= FETCH_1;
 
                 when JMP_1 =>
 
                     pcctrl <= "101";   -- set pc to 10 bit value
-                    
+
                     state <= JMP_2;
 
                 when JMP_2 =>
-                    
+
                     romctrl <= "00";   -- send pc to rom
-                    
+
                     state <= FETCH_1;
 
                 when HALT =>
@@ -319,4 +357,3 @@ begin
     end process;
 
 end architecture;
-

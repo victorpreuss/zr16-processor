@@ -1,11 +1,11 @@
 ---------------------------------------------------------------------------
 -- Company     : Universidade Federal de Santa Catarina
 -- Author(s)   : Victor H B Preuss
--- 
+--
 -- Creation Date : 12/04/2018
 -- File          : rom.vhd
 --
--- Abstract : 
+-- Abstract :
 --
 ---------------------------------------------------------------------------
 library ieee;
@@ -14,7 +14,7 @@ use ieee.numeric_std.all;
 use std.textio.all;
 
 ---------------------------------------------------------------------------
-entity rom is 
+entity rom is
     generic (
         DATA_SIZE   : integer := 16; -- size of an addressable data
         ADDR_SIZE   : integer := 10; -- number of bits of and address
@@ -30,7 +30,7 @@ end entity;
 
 ---------------------------------------------------------------------------
 architecture arch of rom is
-    
+
     subtype word_t is std_logic_vector(DATA_SIZE-1 downto 0);
     type memory_t is array(0 to MEM_SIZE-1) of word_t;
 
@@ -52,10 +52,10 @@ architecture arch of rom is
     end function;
 
     signal addr_reg : integer := 0;
-    signal rom_data : memory_t := init_rom("./etc/test.zr16.stringbin");
+    signal rom_data : memory_t := init_rom("./etc/code/test.zr16.stringbin");
 
 begin
-    
+
     process (clk) is
     begin
         if (rising_edge(clk)) then
@@ -66,4 +66,3 @@ begin
     data <= rom_data(addr_reg);
 
 end architecture;
-

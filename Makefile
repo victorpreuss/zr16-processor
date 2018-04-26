@@ -33,5 +33,6 @@ init: force
 	$(GHDL) -a $(GHDLFLAGS) src/register_file.vhd
 	$(GHDL) -a $(GHDLFLAGS) src/mux8.vhd
 	$(GHDL) -a $(GHDLFLAGS) src/mux2.vhd
+	$(GHDL) -a $(GHDLFLAGS) src/alu.vhd
 
 force:

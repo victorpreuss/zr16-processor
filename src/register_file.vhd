@@ -1,11 +1,11 @@
 ---------------------------------------------------------------------------
 -- Company     : Universidade Federal de Santa Catarina
 -- Author(s)   : Victor H B Preuss
--- 
+--
 -- Creation Date : 13/04/2018
 -- File          : register_file.vhd
 --
--- Abstract : 
+-- Abstract :
 --
 ---------------------------------------------------------------------------
 library ieee;
@@ -13,7 +13,7 @@ use ieee.std_logic_1164.ALL;
 use ieee.numeric_std.all;
 
 ---------------------------------------------------------------------------
-entity register_file is 
+entity register_file is
     port (
         clk     : in std_logic;
         rw      : in std_logic;                    -- read = '0' / write = '1'
@@ -22,6 +22,8 @@ entity register_file is
         in1     : in std_logic_vector(3 downto 0); -- origin register
         in2     : in std_logic_vector(3 downto 0); -- destination register
         alu     : in std_logic_vector(7 downto 0); -- alu data
+        flags   : in std_logic_vector(2 downto 0);
+        flctrl  : in std_logic; -- flag to overwrite register flags with alu
         ro      : out std_logic_vector(7 downto 0);
         rd      : out std_logic_vector(7 downto 0);
         r13     : out std_logic_vector(7 downto 0);
@@ -52,7 +54,7 @@ begin
     idx_o <= to_integer(unsigned(in1));
     idx_d <= to_integer(unsigned(in2));
 
-    register_rw : process (clk) is
+    reg_rw_ctrl : process (clk) is
     begin
         if (rising_edge(clk)) then
             ro_reg <= rf(idx_o);
@@ -93,6 +95,15 @@ begin
         end if;
     end process;
 
+    flags_ctrl : process (clk) is
+    begin
+        if (rising_edge(clk)) then
+            if (flctrl = '1') then
+                rf(15)(7 downto 5) <= flags;
+            end if;
+        end if;
+    end process;
+
     ro  <= ro_reg;
     rd  <= rd_reg;
     r13 <= rf(13);
@@ -101,4 +112,3 @@ begin
     pc  <= pc_int;
 
 end architecture;
-
