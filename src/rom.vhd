@@ -51,18 +51,22 @@ architecture arch of rom is
 
     end function;
 
-    signal addr_reg : integer := 0;
+    --signal addr_reg : integer := 0;
+    signal addri : integer := 0;
     signal rom_data : memory_t := init_rom("./etc/code/test.zr16.stringbin");
 
 begin
 
-    process (clk) is
-    begin
-        if (rising_edge(clk)) then
-            addr_reg <= to_integer(unsigned(addr));
-        end if;
-    end process;
+    addri <= to_integer(unsigned(addr));
+    data <= rom_data(addri);
 
-    data <= rom_data(addr_reg);
+    --process (clk) is
+    --begin
+    --    if (rising_edge(clk)) then
+    --        addr_reg <= to_integer(unsigned(addr));
+    --    end if;
+    --end process;
+
+    --data <= rom_data(addr_reg);
 
 end architecture;

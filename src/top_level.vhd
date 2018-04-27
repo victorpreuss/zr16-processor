@@ -176,9 +176,9 @@ architecture arch of top_level is
     alias rompartition : std_logic_vector(2 downto 0) is r14(6 downto 4);
 
     -- alu signals
-    signal aluin1 : std_logic_vector(7 downto 0) := (others => '0');
-    signal aluin2 : std_logic_vector(7 downto 0) := (others => '0');
-    signal aluout : std_logic_vector(7 downto 0) := (others => '0');
+    signal aluin1   : std_logic_vector(7 downto 0) := (others => '0');
+    signal aluin2   : std_logic_vector(7 downto 0) := (others => '0');
+    signal aluout   : std_logic_vector(7 downto 0) := (others => '0');
     signal aluflags : std_logic_vector(2 downto 0) := (others => '0');
 
     -- control signals

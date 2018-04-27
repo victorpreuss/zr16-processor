@@ -44,27 +44,34 @@ architecture arch of register_file is
     signal idx_o : integer := 0;
     signal idx_d : integer := 0;
 
-    signal ro_reg : std_logic_vector(7 downto 0) := (others => '0');
-    signal rd_reg : std_logic_vector(7 downto 0) := (others => '0');
+    signal pc_int : std_logic_vector(9 downto 0) := (others => '0');
 
-    signal pc_int : std_logic_vector(9 downto 0) := rf(14)(1 downto 0) & rf(13);
+    signal r13_int : std_logic_vector(7 downto 0) := (others => '0');
+    signal r14_int : std_logic_vector(7 downto 0) := (others => '0');
+    signal r15_int : std_logic_vector(7 downto 0) := (others => '0');
 
 begin
 
     idx_o <= to_integer(unsigned(in1));
     idx_d <= to_integer(unsigned(in2));
 
-    reg_rw_ctrl : process (rw, addro, idx_o, idx_d) is
+    reg_rw_ctrl : process (clk) is
     begin
-        if (rw = '1') then                  -- write
-            if (addro = "00") then          -- mov: reg -> reg
-                rf(idx_d) <= alu;
-            elsif (addro = "01") then       -- mov: (reg) -> reg
-                rf(idx_d) <= alu;
-            elsif (addro = "10") then       -- mov: (mem) -> reg0
-                rf(0)  <= alu;
-            elsif (addro = "11") then       -- mov: immed -> reg0
-                rf(0)  <= in2 & in1;
+        if rising_edge(clk) then
+            if (rw = '1') then                  -- write
+                if (addro = "00") then          -- mov: reg -> reg
+                    rf(idx_d) <= alu;
+                elsif (addro = "01") then       -- mov: (reg) -> reg
+                    rf(idx_d) <= alu;
+                elsif (addro = "10") then       -- mov: (mem) -> reg0
+                    rf(0) <= alu;
+                elsif (addro = "11") then       -- mov: immed -> reg0
+                    rf(0) <= in2 & in1;
+                end if;
+            end if;
+            -- overwrite flags with alu values
+            if (flctrl = '1') then
+                rf(15)(7 downto 5) <= flags;
             end if;
         end if;
     end process;
@@ -82,15 +89,6 @@ begin
                 pc_int <= addro & in2 & in1;    -- jmp end
             else
                 pc_int <= pc_int;
-            end if;
-        end if;
-    end process;
-
-    flags_ctrl : process (clk) is
-    begin
-        if (rising_edge(clk)) then
-            if (flctrl = '1') then
-                rf(15)(7 downto 5) <= flags;
             end if;
         end if;
     end process;
