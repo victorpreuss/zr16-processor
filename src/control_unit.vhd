@@ -77,6 +77,8 @@ architecture arch of control_unit is
     alias immed   : std_logic_vector(7 downto 0) is w_instruction(7 downto 0);
     alias memaddr : std_logic_vector(7 downto 0) is w_instruction(7 downto 0);
 
+    signal w_done : std_logic := '0';
+
 begin
 
     romctrl   <= w_romctrl;
@@ -92,102 +94,95 @@ begin
 
     -- transition of state machine is synchronous
     sm_sequential : process (clk) is
+        variable L : line;
     begin
         if (rst_n = '0') then
             state <= RESET;
         elsif (falling_edge(clk)) then
-            state <= next_state;
+            case (state) is
+                when RESET =>
+
+                    w_done <= '1';
+                    w_pcctrl <= "001"; -- start pc increment
+                    state  <= CONTROL_1;
+
+                when CONTROL_1 =>
+
+                    -- set ALU control
+                    case (opcode) is
+                        when MOV =>
+                            w_aluctrl <= "0000";
+                        when ADD =>
+                            w_aluctrl <= "0001";
+                        when SUB =>
+                            w_aluctrl <= "0010";
+                        when others => w_aluctrl <= "0000";
+                    end case;
+
+                    -- addressing modes
+                    if (opcode = MOV or opcode = ADD or opcode = SUB) then
+                        if (addrmodeo = REG and addrmoded = REG) then
+                            -- set ALU inputs
+                            w_aluoctrl <= "100"; -- origin resgister
+                            w_aludctrl <= '1';   -- destination register
+
+                            w_regrw <= '1';
+                            w_flagsctrl <= '1';
+                        elsif (addrmodeo = IMMEDIATE and addrmoded = REG) then
+                            w_regrw <= '1';
+                            w_flagsctrl <= '1';
+                        end if;
+                    else
+                        w_regrw <= '0';
+                        w_flagsctrl <= '0';
+                    end if;
+
+                    if (opcode = JMP) then
+                        if (addrmoded = "00") then
+                            w_pcctrl <= "010";
+                        elsif (addrmoded = "01") then
+                            w_pcctrl <= "100";
+                        elsif (addrmoded = "10") then
+                            w_pcctrl <= "101";
+                            w_done <= '0'; -- hold instruction register
+                        end if;
+                    else
+                        w_pcctrl <= "001"; -- start pc increment
+                    end if;
+
+                    if (opcode = JMP) then
+                        state <= CONTROL_2;
+                    else
+                        state <= CONTROL_1;
+                    end if;
+
+                when CONTROL_2 =>
+
+                    if (opcode = JMP) then
+                        if (addrmoded = "00" or addrmoded = "10") then
+                            w_pcctrl <= "001";
+                            w_done <= '1';
+                            state <= CONTROL_1;
+                        elsif (addrmoded = "01") then
+                            -- TODO: implement this jump from memory position
+                        end if;
+                    end if;
+
+                    state <= CONTROL_1;
+
+                when others =>
+                    state <= RESET;
+            end case;
         end if;
     end process;
 
-    sm_combinational : process (state) is
-        variable L : line;
+    resgiter_instruction : process (clk) is
     begin
-        case (state) is
-            when RESET =>
-
-                -- output function
-                -- TODO: reset ram, registers and control flags
-
-                -- transition logic
-                next_state <= FETCH;
-
-            when FETCH =>
-
-                w_regrw <= '0';
-                w_flagsctrl <= '0';
-
-                w_romctrl <= "00";           -- set rom input addr
-                w_pcctrl <= "000";           -- stop pc
-
+        if (rising_edge(clk)) then
+            if (w_done = '1') then
                 w_instruction <= romdata;    -- fetch rom instruction
-
-                -- transition logic
-                next_state <= CONTROL_1;
-
-            when CONTROL_1 =>
-
-                -- set ALU control
-                case (opcode) is
-                    when MOV =>
-                        w_aluctrl <= "0000";
-                    when ADD =>
-                        w_aluctrl <= "0001";
-                    when SUB =>
-                        w_aluctrl <= "0010";
-                    when others => w_aluctrl <= "0000";
-                end case;
-
-                -- addressing modes
-                if (opcode = MOV or opcode = ADD or opcode = SUB) then
-                    if (addrmodeo = REG and addrmoded = REG) then
-                        -- set ALU inputs
-                        w_aluoctrl <= "100"; -- origin resgister
-                        w_aludctrl <= '1';   -- destination register
-
-                        w_regrw <= '1';
-                        w_flagsctrl <= '1';
-                    elsif (addrmodeo = IMMEDIATE and addrmoded = REG) then
-                        w_regrw <= '1';
-                        w_flagsctrl <= '1';
-                    end if;
-                else
-                    w_regrw <= '0';
-                    w_flagsctrl <= '0';
-                end if;
-
-                if (opcode = JMP) then
-                    if (addrmoded = "00") then
-                        w_pcctrl <= "010";
-                    elsif (addrmoded = "01") then
-                        w_pcctrl <= "100";
-                    elsif (addrmoded = "10") then
-                        w_pcctrl <= "101";
-                    end if;
-                else
-                    w_pcctrl <= "001"; -- start pc increment
-                end if;
-
-                write(L, opcode);
-                writeline(output, L);
-
-                write(L, addrmoded);
-                writeline(output, L);
-
-                next_state <= FETCH;
-
-            when others =>
-                next_state <= RESET;
-        end case;
+            end if;
+        end if;
     end process;
-
-    --fetch : process (clk) is
-    --begin
-    --    if (rising_edge(clk)) then
-    --        if (w_done = '1') then
-    --            w_instruction <= romdata;    -- fetch rom instruction
-    --        end if;
-    --    end if;
-    --end process;
 
 end architecture;
