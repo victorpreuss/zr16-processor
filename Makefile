@@ -35,5 +35,6 @@ init: force
 	$(GHDL) -a $(GHDLFLAGS) src/mux2.vhd
 	$(GHDL) -a $(GHDLFLAGS) src/alu.vhd
 	$(GHDL) -a $(GHDLFLAGS) src/control_unit.vhd
+	$(GHDL) -a $(GHDLFLAGS) src/ram.vhd
 
 force:

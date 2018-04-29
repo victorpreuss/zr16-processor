@@ -124,6 +124,7 @@ architecture arch of top_level is
         rst_n       : in std_logic;
         romdata     : in std_logic_vector(15 downto 0);
         romctrl     : out std_logic_vector(1 downto 0);
+        ramctrl     : out std_logic_vector(1 downto 0);
         ramrw       : out std_logic;
         regrw       : out std_logic;
         pcctrl      : out std_logic_vector(2 downto 0);
@@ -131,7 +132,20 @@ architecture arch of top_level is
         aluctrl     : out std_logic_vector(3 downto 0);
         aluoctrl    : out std_logic_vector(2 downto 0);
         aludctrl    : out std_logic;
+        regorig     : out std_logic_vector(3 downto 0);
+        regdest     : out std_logic_vector(3 downto 0);
         instruction : out std_logic_vector(15 downto 0)
+    );
+    end component;
+
+    component ram is
+    port (
+        clk      : in std_logic;
+        rst_n    : in std_logic;
+        rw       : in std_logic;
+        addr     : in std_logic_vector(7 downto 0);
+        datain   : in std_logic_vector(7 downto 0);
+        dataout  : out std_logic_vector(7 downto 0)
     );
     end component;
 
@@ -165,6 +179,9 @@ architecture arch of top_level is
     alias memaddr : std_logic_vector(7 downto 0) is instruction(7 downto 0);
 
     -- registers
+    signal regorig : std_logic_vector(3 downto 0);
+    signal regdest : std_logic_vector(3 downto 0);
+
     signal pc  : std_logic_vector(9 downto 0) := (others => '0');
     signal r13 : std_logic_vector(7 downto 0) := (others => '0');
     signal r14 : std_logic_vector(7 downto 0) := (others => '0');
@@ -183,13 +200,19 @@ architecture arch of top_level is
 
     -- control signals
     signal romctrl   : std_logic_vector(1 downto 0) := "00";
-    signal ramrw     : std_logic := '0'; -- RAM R/W flag
-    signal regrw     : std_logic := '0'; -- registers R/W flag
+    signal ramctrl   : std_logic_vector(1 downto 0) := "00";
+    signal ramrw     : std_logic := '0';
+    signal regrw     : std_logic := '0';
     signal pcctrl    : std_logic_vector(2 downto 0) := "000";
     signal flagsctrl : std_logic := '0';
     signal aluctrl   : std_logic_vector(3 downto 0) := (others => '0');
     signal aluoctrl  : std_logic_vector(2 downto 0) := (others => '0');
     signal aludctrl  : std_logic := '0';
+
+    -- ram signals
+    signal ramaddr    : std_logic_vector(7 downto 0);
+    signal ramdatain  : std_logic_vector(7 downto 0);
+    signal ramdataout : std_logic_vector(7 downto 0);
 
 begin
 
@@ -213,7 +236,7 @@ begin
         --in3      => rompartition & ro,                   -- in case of a MOV rd, (ro)
         in2      => (others => '0'),
         in3      => (others => '0'),
-        in4      => (others => '0'), -- nothing
+        in4      => (others => '0'),
         out1     => romaddr
     );
 
@@ -223,8 +246,8 @@ begin
         rw      => regrw,
         addro   => addrmodeo,
         pcctrl  => pcctrl,
-        in1     => orig,
-        in2     => dest,
+        in1     => regorig,
+        in2     => regdest,
         alu     => aluout,
         flags   => aluflags,
         flctrl  => flagsctrl,
@@ -242,18 +265,18 @@ begin
         in1     => immed,
         in2     => romdata(15 downto 8),
         in3     => romdata(7 downto 0),
-        in4     => (others => '0'), -- TODO: RAM input
+        in4     => ramdataout,
         in5     => ro,
-        in6     => (others => '0'), -- nothing
-        in7     => (others => '0'), -- nothing
-        in8     => (others => '0'), -- nothing
+        in6     => (others => '0'),
+        in7     => (others => '0'),
+        in8     => (others => '0'),
         out1    => aluin1
     );
 
     mux_alu_d_inst : mux2 generic map(8)
     port map (
         ctrl    => aludctrl,
-        in1     => (others => '0'), -- TODO: RAM input
+        in1     => ramdataout,
         in2     => rd,
         out1    => aluin2
     );
@@ -278,6 +301,7 @@ begin
         rst_n       => rst_n,
         romdata     => romdata,
         romctrl     => romctrl,
+        ramctrl     => ramctrl,
         ramrw       => ramrw,
         regrw       => regrw,
         pcctrl      => pcctrl,
@@ -285,7 +309,29 @@ begin
         aluctrl     => aluctrl,
         aluoctrl    => aluoctrl,
         aludctrl    => aludctrl,
+        regorig     => regorig,
+        regdest     => regdest,
         instruction => instruction
+    );
+
+    mux_ram_inst : mux4 generic map(8)
+    port map (
+        ctrl    => ramctrl,
+        in1     => memaddr,
+        in2     => ro,
+        in3     => rd,
+        in4     => (others => '0'),
+        out1    => ramaddr
+    );
+
+    ram_inst : ram
+    port map (
+        clk     => clk,
+        rst_n   => rst_n,
+        rw      => ramrw,
+        addr    => ramaddr,
+        datain  => aluout,
+        dataout => ramdataout
     );
 
 end architecture;

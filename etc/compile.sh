@@ -1,1 +1,1 @@
-TZ=Europe/Berlin wine compiler/ZR16_Compiler.exe code/test.zr16 -debug
+TZ=Europe/Berlin wine compiler/ZR16_Compiler.exe $1 -debug

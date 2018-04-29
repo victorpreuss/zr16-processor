@@ -9,7 +9,7 @@
 --
 ---------------------------------------------------------------------------
 library ieee;
-use ieee.std_logic_1164.ALL;
+use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 ---------------------------------------------------------------------------
@@ -58,16 +58,17 @@ begin
     reg_rw_ctrl : process (clk) is
     begin
         if rising_edge(clk) then
-            if (rw = '1') then                  -- write
-                if (addro = "00") then          -- mov: reg -> reg
-                    rf(idx_d) <= alu;
-                elsif (addro = "01") then       -- mov: (reg) -> reg
-                    rf(idx_d) <= alu;
-                elsif (addro = "10") then       -- mov: (mem) -> reg0
-                    rf(0) <= alu;
-                elsif (addro = "11") then       -- mov: immed -> reg0
-                    rf(0) <= in2 & in1;
-                end if;
+            if (rw = '1') then -- write
+                rf(idx_d) <= alu;
+                --if (addro = "00") then          -- reg -> reg
+                --    rf(idx_d) <= alu;
+                --elsif (addro = "01") then       -- (reg) -> reg
+                --    rf(idx_d) <= alu;
+                --elsif (addro = "10") then       -- (mem) -> reg0
+                --    rf(0) <= alu;
+                --elsif (addro = "11") then       -- immed -> reg0
+                --    rf(0) <= in2 & in1;
+                --end if;
             end if;
             -- overwrite flags with alu values
             if (flctrl = '1') then

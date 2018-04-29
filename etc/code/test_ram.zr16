@@ -1,0 +1,13 @@
+;da  0x01 { addr1, addr2 }
+;mov r0, 7
+;mov (addr1), r0
+;mov r0, 49
+;add r0, (addr1)
+;mov (addr2), r0
+;add (addr2), r0
+mov r0, 8
+mov r1, r0
+mov r0, 49
+mov (r1), r0
+mov r0, 7
+add r0, (r1)
