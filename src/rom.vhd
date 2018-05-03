@@ -53,7 +53,7 @@ architecture arch of rom is
 
     --signal addr_reg : integer := 0;
     signal addri : integer := 0;
-    signal rom_data : memory_t := init_rom("./etc/code/test_ram.zr16.stringbin");
+    signal rom_data : memory_t := init_rom("./etc/code/bubblesort.zr16.stringbin");
 
 begin
 

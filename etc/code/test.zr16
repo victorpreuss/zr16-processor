@@ -4,5 +4,10 @@
         mov r3, r2
         mov r0, 49
         mov r4, r0
-loop:   add r4, r3
-        jmp loop
+loop1:  add r4, r3
+        mov r0, 1
+        jnz loop
+        mov r4, r3
+        mov r3, r4
+        mov r4, r3
+loop:   jmp loop1

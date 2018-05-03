@@ -11,6 +11,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use std.textio.all;
 
 ---------------------------------------------------------------------------
 entity register_file is
@@ -46,34 +47,32 @@ architecture arch of register_file is
 
     signal pc_int : std_logic_vector(9 downto 0) := (others => '0');
 
-    signal r13_int : std_logic_vector(7 downto 0) := (others => '0');
-    signal r14_int : std_logic_vector(7 downto 0) := (others => '0');
-    signal r15_int : std_logic_vector(7 downto 0) := (others => '0');
-
 begin
 
     idx_o <= to_integer(unsigned(in1));
     idx_d <= to_integer(unsigned(in2));
 
     reg_rw_ctrl : process (clk) is
+        variable L : line;
     begin
         if rising_edge(clk) then
             if (rw = '1') then -- write
                 rf(idx_d) <= alu;
-                --if (addro = "00") then          -- reg -> reg
-                --    rf(idx_d) <= alu;
-                --elsif (addro = "01") then       -- (reg) -> reg
-                --    rf(idx_d) <= alu;
-                --elsif (addro = "10") then       -- (mem) -> reg0
-                --    rf(0) <= alu;
-                --elsif (addro = "11") then       -- immed -> reg0
-                --    rf(0) <= in2 & in1;
-                --end if;
             end if;
-            -- overwrite flags with alu values
+
             if (flctrl = '1') then
                 rf(15)(7 downto 5) <= flags;
             end if;
+
+            write(L, string'("Register Content"));
+            writeline(output, L);
+            hwrite(L, rf(0));
+            writeline(output, L);
+            hwrite(L, rf(1));
+            writeline(output, L);
+            hwrite(L, rf(2));
+            writeline(output, L);
+
         end if;
     end process;
 
@@ -86,8 +85,8 @@ begin
                 pc_int <= addro & rf(idx_d);
             elsif (pcctrl = "100") then         -- jmp par (rd)
                 pc_int <= addro & alu;
-            elsif (pcctrl = "101") then
-                pc_int <= addro & in2 & in1;    -- jmp end
+            elsif (pcctrl = "101") then         -- jmp end
+                pc_int <= addro & in2 & in1;
             else
                 pc_int <= pc_int;
             end if;

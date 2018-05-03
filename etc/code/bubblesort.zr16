@@ -1,0 +1,58 @@
+main:               MOV  R0, 9
+                    MOV  (2), R0
+                    MOV  R0, 3
+                    MOV  (3), R0
+                    MOV  R0, 6
+                    MOV  (4), R0
+                    MOV  R0, 2
+                    MOV  (5), R0
+                    MOV  R0, 8
+                    MOV  (6), R0
+                    MOV  R0, 1
+                    MOV  (7), R0
+                    MOV  R0, 4
+                    MOV  (8), R0
+                    MOV  R0, 5
+                    MOV  (9), R0
+                    MOV  R0, 0
+                    MOV  (10), R0
+                    MOV  R0, 0
+                    MOV  (11), R0
+                    MOV  R0, 0
+                    MOV  (12), R0
+for_1:              MOV  R0, 0
+                    MOV  (10), R0
+loopfor_1:          MOV  R0, (10)
+                    MOV  R1, R0
+                    MOV  R0, 8
+                    CMP  R0, R1
+                    JZ   end_loopfor_1
+for_2:              MOV  R0, (10)
+                    MOV  R1, R0
+                    MOV  R0, 1
+                    SUB  R1, R0
+                    MOV  R0, R1
+                    MOV  (11), R0
+loopfor_2:          MOV  R0, (11)
+                    MOV  R1, R0
+                    MOV  R0, 255
+                    CMP  R0, R1
+                    JZ   end_loopfor_2
+                    MOV  R0, (11)
+                    ADD  R0, 2
+                    MOV  R1, (R0)
+                    ADD  R0, 1
+                    MOV  R2, (R0)
+                    CMP  R1, R2
+                    JC   dec_j
+                    MOV  R0, (11)
+                    ADD  R0, 2
+                    MOV  (R0), R2
+                    ADD  R0, 1
+                    MOV  (R0), R1
+dec_j:              DEC  (11)
+                    JMP  loopfor_2
+end_loopfor_2:      INC  (10)
+                    JMP  loopfor_1
+end_loopfor_1:      JMP  end_prog
+end_prog:           JMP  end_prog

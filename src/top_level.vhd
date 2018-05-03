@@ -123,6 +123,7 @@ architecture arch of top_level is
         clk         : in std_logic;
         rst_n       : in std_logic;
         romdata     : in std_logic_vector(15 downto 0);
+        aluflags    : std_logic_vector(2 downto 0);
         romctrl     : out std_logic_vector(1 downto 0);
         ramctrl     : out std_logic_vector(1 downto 0);
         ramrw       : out std_logic;
@@ -300,6 +301,7 @@ begin
         clk         => clk,
         rst_n       => rst_n,
         romdata     => romdata,
+        aluflags    => r15(7 downto 5),
         romctrl     => romctrl,
         ramctrl     => ramctrl,
         ramrw       => ramrw,

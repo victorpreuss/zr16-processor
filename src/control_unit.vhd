@@ -19,6 +19,7 @@ entity control_unit is
         clk         : in std_logic;
         rst_n       : in std_logic;
         romdata     : in std_logic_vector(15 downto 0);
+        aluflags    : in std_logic_vector(2 downto 0);
         romctrl     : out std_logic_vector(1 downto 0);
         ramctrl     : out std_logic_vector(1 downto 0);
         ramrw       : out std_logic;
@@ -39,9 +40,19 @@ architecture arch of control_unit is
 
     -- opcodes
     constant JMP  : std_logic_vector(3 downto 0) := "0000";
+    constant JZ   : std_logic_vector(3 downto 0) := "0001";
+    constant JNZ  : std_logic_vector(3 downto 0) := "0001"; -- same as JZ
+    constant JC   : std_logic_vector(3 downto 0) := "0001"; -- same as JZ
+    constant JVP  : std_logic_vector(3 downto 0) := "0001"; -- same as JZ
     constant ADD  : std_logic_vector(3 downto 0) := "1000";
     constant SUB  : std_logic_vector(3 downto 0) := "1001";
+    constant CMP  : std_logic_vector(3 downto 0) := "0111";
     constant MOV  : std_logic_vector(3 downto 0) := "1101";
+    constant MVS  : std_logic_vector(3 downto 0) := "0011";
+    constant INC  : std_logic_vector(3 downto 0) := "1111";
+    constant DEC  : std_logic_vector(3 downto 0) := "1111";
+    constant DJNZ : std_logic_vector(3 downto 0) := "1110";
+
 
     -- addressing modes
     constant REG       : std_logic_vector(1 downto 0) := "00";
@@ -50,6 +61,10 @@ architecture arch of control_unit is
     constant IMMEDIATE : std_logic_vector(1 downto 0) := "11";
 
     constant REG0      : std_logic_vector(3 downto 0) := "0000";
+    constant REG1      : std_logic_vector(3 downto 0) := "0001";
+    constant REG2      : std_logic_vector(3 downto 0) := "0010";
+    constant REG3      : std_logic_vector(3 downto 0) := "0011";
+    constant REG4      : std_logic_vector(3 downto 0) := "0100";
 
     -- control unit state machine
     type state_t is (RESET, FETCH, CONTROL_1, CONTROL_2, CONTROL_3, HALT);
@@ -76,7 +91,6 @@ architecture arch of control_unit is
     -- instruction decode
     alias opcode      : std_logic_vector(3 downto 0) is w_instruction(15 downto 12); -- opcode
 
-    -- the below definitions are for instructions of type MOV, ADD
     alias addrmoded   : std_logic_vector(1 downto 0) is w_instruction(11 downto 10); -- addrmode of dest
     alias addrmodeo   : std_logic_vector(1 downto 0) is w_instruction(9 downto 8);   -- addrmode of orig
 
@@ -85,6 +99,13 @@ architecture arch of control_unit is
 
     alias immed   : std_logic_vector(7 downto 0) is w_instruction(7 downto 0);
     alias memaddr : std_logic_vector(7 downto 0) is w_instruction(7 downto 0);
+
+    alias mvsdest : std_logic_vector(3 downto 0) is w_instruction(11 downto 8);
+
+    -- alu flags
+    alias Z     : std_logic is aluflags(2);
+    alias C     : std_logic is aluflags(1);
+    alias V_P   : std_logic is aluflags(0);
 
     signal w_done : std_logic := '0';
 
@@ -114,7 +135,6 @@ begin
         elsif (falling_edge(clk)) then
             case (state) is
                 when RESET =>
-
                     w_ramrw <= '0';
                     w_regrw <= '0';
                     w_flagsctrl <= '0';
@@ -128,18 +148,33 @@ begin
                     case (opcode) is
                         when MOV =>
                             w_aluctrl <= "0000";
+                        when MVS =>
+                            w_aluctrl <= "0000";
                         when ADD =>
                             w_aluctrl <= "0001";
                         when SUB =>
                             w_aluctrl <= "0010";
+                        when CMP =>
+                            w_aluctrl <= "0100";
                         when JMP =>
-                            w_aluctrl <= "0000"; -- ALU is a wire
+                            w_aluctrl <= "0000";
+                        when JZ => -- JNZ, JC and JVP have the same opcode
+                            w_aluctrl <= "0000";
+                        when INC => -- DEC has the same opcode
+                            if (w_instruction(8) = '0') then
+                                w_aluctrl <= "1000"; -- INC
+                            elsif (w_instruction(8) = '1') then
+                                w_aluctrl <= "1001"; -- DEC
+                            end if;
+                        when DJNZ =>
+                            w_aluctrl <= "1001"; -- DEC
                         when others =>
                             w_aluctrl <= "0000";
                     end case;
 
                     -- addressing modes
-                    if (opcode = MOV or opcode = ADD or opcode = SUB) then
+                    if (opcode = MOV or opcode = ADD or opcode = SUB or
+                        opcode = CMP) then
                         if (addrmodeo = REG and addrmoded = REG) then
                             w_aluoctrl <= "100";
                             w_aludctrl <= '1';
@@ -147,8 +182,12 @@ begin
                             w_regorig <= orig;
                             w_regdest <= dest;
 
+                            if (opcode /= CMP) then
+                                w_regrw <= '1';
+                            else
+                                w_regrw <= '0';
+                            end if;
                             w_ramrw <= '0';
-                            w_regrw <= '1';
                             w_flagsctrl <= '1';
                             w_ramctrl <= "00";
 
@@ -195,8 +234,12 @@ begin
                             w_regorig <= orig;
                             w_regdest <= REG0;
 
+                            if (opcode /= CMP) then
+                                w_regrw <= '1';
+                            else
+                                w_regrw <= '0';
+                            end if;
                             w_ramrw <= '0';
-                            w_regrw <= '1';
                             w_flagsctrl <= '1';
                             w_ramctrl <= "00";
 
@@ -211,7 +254,11 @@ begin
                             w_regorig <= orig;
                             w_regdest <= dest;
 
-                            w_ramrw <= '1';
+                            if (opcode /= CMP) then
+                                w_ramrw <= '1';
+                            else
+                                w_ramrw <= '0';
+                            end if;
                             w_regrw <= '0';
                             w_flagsctrl <= '1';
                             w_ramctrl <= "10";
@@ -227,7 +274,11 @@ begin
                             w_regorig <= REG0;
                             w_regdest <= dest;
 
-                            w_ramrw <= '1';
+                            if (opcode /= CMP) then
+                                w_ramrw <= '1';
+                            else
+                                w_ramrw <= '0';
+                            end if;
                             w_regrw <= '0';
                             w_flagsctrl <= '1';
                             w_ramctrl <= "00";
@@ -236,31 +287,25 @@ begin
                             w_done <= '1';
 
                             state <= CONTROL_1;
-                            --write(L, to_hstring(instruction));
-                            --writeline(output, L);
                         end if;
+                    elsif (opcode = MVS) then
+                        w_aluoctrl <= "000";
+                        w_aludctrl <= '1';
+
+                        w_regorig <= orig;
+                        w_regdest <= mvsdest;
+
+                        w_ramrw <= '0';
+                        w_regrw <= '1';
+                        w_flagsctrl <= '1';
+                        w_ramctrl <= "00";
+
+                        w_pcctrl <= "001";
+                        w_done <= '1';
+
+                        state <= CONTROL_1;
                     elsif (opcode = JMP) then
-                        if (addrmoded = "00") then
-                            --w_pcctrl <= "010";
-                            -- TODO: Finish this implementation
-                        elsif (addrmoded = "01") then
-                            --w_aluoctrl <= "011";
-
-                            --w_regorig <= orig;
-                            --w_regdest <= dest;
-
-                            --w_ramrw <= '0';
-                            --w_regrw <= '0';
-                            --w_flagsctrl <= '0';
-                            --w_ramctrl <= "10";
-
-                            --w_pcctrl <= "100"; -- SET THIS on CONTROL_2 or 3
-                            --w_done <= '0';
-
-                            --state <= CONTROL_2;
-                            -- TODO: Finish this implementation
-                            -- Takes 3 cycles!!!
-                        elsif (addrmoded = "10") then
+                        if (addrmoded = "10") then
                             w_aluoctrl <= "000";
 
                             w_regorig <= orig;
@@ -275,13 +320,91 @@ begin
 
                             state <= CONTROL_2;
                         end if;
+                    elsif (opcode = JZ) then -- JNZ, JC and JVP have the same opcode
+                        if ((addrmoded = "00" and Z = '1') or -- JZ
+                            (addrmoded = "01" and Z = '0') or -- JNZ
+                            (addrmoded = "10" and C = '1') or -- JC
+                            (addrmoded = "11" and V_P = '1')) then -- JVP
+                            w_aluoctrl <= "000";
+
+                            w_regorig <= orig;
+                            w_regdest <= dest;
+
+                            w_ramrw <= '0';
+                            w_regrw <= '0';
+                            w_flagsctrl <= '0';
+
+                            w_pcctrl <= "101";
+                            w_done <= '0';
+
+                            state <= CONTROL_2;
+                        else
+                            w_ramrw <= '0';
+                            w_regrw <= '0';
+                            w_flagsctrl <= '0';
+
+                            w_pcctrl <= "001";
+                            w_done <= '1';
+
+                            state <= CONTROL_1;
+                        end if;
+                    elsif (opcode = INC) then -- DEC has the same opcode
+                        if (addrmoded = REG) then
+
+                        elsif (addrmoded = REG_ADDR) then
+
+                        elsif (addrmoded = ADDR) then
+                            --write(L, string'("oi1"));
+                            --writeline(output, L);
+
+                            w_aluoctrl <= "000";
+                            w_aludctrl <= '0';
+
+                            w_regorig <= orig;
+                            w_regdest <= dest;
+
+                            w_ramrw <= '0';
+                            w_regrw <= '0';
+                            w_flagsctrl <= '0';
+                            w_ramctrl <= "00";
+
+                            w_pcctrl <= "000";
+                            w_done <= '0';
+
+                            state <= CONTROL_2;
+                        end if;
+                    elsif (opcode = DJNZ) then
+                        w_aluoctrl <= "000";
+                        w_aludctrl <= '1';
+
+                        w_regorig <= orig;
+                        if (addrmoded = "00") then
+                            w_regdest <= REG1;
+                        elsif (addrmoded = "01") then
+                            w_regdest <= REG2;
+                        elsif (addrmoded = "10") then
+                            w_regdest <= REG3;
+                        elsif (addrmoded = "11") then
+                            w_regdest <= REG4;
+                        end if;
+
+                        w_ramrw <= '0';
+                        w_regrw <= '0';
+                        w_flagsctrl <= '0';
+                        w_ramctrl <= "00";
+
+                        w_pcctrl <= "000";
+                        w_done <= '0';
+
+                        state <= CONTROL_2;
                     else
                         state <= RESET;
                     end if;
 
                 when CONTROL_2 =>
 
-                    if (opcode = MOV or opcode = ADD or opcode = SUB) then
+                    if (opcode = MOV or opcode = ADD or opcode = SUB or
+                        opcode = CMP) then
                         if (addrmodeo = REG_ADDR and addrmoded = REG) then
                             w_aluoctrl <= "011";
                             w_aludctrl <= '1';
@@ -289,8 +412,12 @@ begin
                             w_regorig <= orig;
                             w_regdest <= dest;
 
+                            if (opcode /= CMP) then
+                                w_regrw <= '1';
+                            else
+                                w_regrw <= '0';
+                            end if;
                             w_ramrw <= '0';
-                            w_regrw <= '1';
                             w_flagsctrl <= '1';
                             w_ramctrl <= "00";
 
@@ -305,8 +432,12 @@ begin
                             w_regorig <= orig;
                             w_regdest <= REG0;
 
+                            if (opcode /= CMP) then
+                                w_regrw <= '1';
+                            else
+                                w_regrw <= '0';
+                            end if;
                             w_ramrw <= '0';
-                            w_regrw <= '1';
                             w_flagsctrl <= '1';
                             w_ramctrl <= "00";
 
@@ -327,9 +458,76 @@ begin
                             w_done <= '1';
 
                             state <= CONTROL_1;
-                        elsif (addrmoded = "01") then
-                            -- TODO: implement this jump from memory position
                         end if;
+                    elsif (opcode = JZ) then -- JNZ, JC and JVP have the same opcode
+                        w_aluoctrl <= "000";
+
+                        w_ramrw <= '0';
+                        w_regrw <= '0';
+                        w_flagsctrl <= '0';
+
+                        w_pcctrl <= "001";
+                        w_done <= '1';
+
+                        state <= CONTROL_1;
+                    elsif (opcode = INC) then -- DEC has the same opcode
+                        if (addrmoded = REG) then
+
+                        elsif (addrmoded = REG_ADDR) then
+
+                        elsif (addrmoded = ADDR) then
+                            w_aluoctrl <= "000";
+                            w_aludctrl <= '0';
+
+                            w_regorig <= orig;
+                            w_regdest <= dest;
+
+                            w_ramrw <= '1';
+                            w_regrw <= '0';
+                            w_flagsctrl <= '1';
+                            w_ramctrl <= "00";
+
+                            w_pcctrl <= "001";
+                            w_done <= '1';
+
+                            state <= CONTROL_1;
+                        end if;
+                    elsif (opcode = DJNZ) then
+                        w_aludctrl <= '1';
+
+                        w_regorig <= orig;
+                        w_regdest <= dest;
+
+                        w_ramrw <= '0';
+                        w_regrw <= '1';
+                        w_flagsctrl <= '1';
+
+                        if (Z = '1') then
+                            w_pcctrl <= "101";
+                            w_done <= '0';
+
+                            state <= CONTROL_3;
+                        else
+                            w_pcctrl <= "001";
+                            w_done <= '1';
+
+                            state <= CONTROL_1;
+                        end if;
+                    end if;
+
+                when CONTROL_3 =>
+
+                    if (opcode = DJNZ) then
+                        w_aluoctrl <= "000";
+
+                        w_ramrw <= '0';
+                        w_regrw <= '0';
+                        w_flagsctrl <= '0';
+
+                        w_pcctrl <= "001";
+                        w_done <= '1';
+
+                        state <= CONTROL_1;
                     end if;
 
                 when others =>
@@ -338,11 +536,13 @@ begin
         end if;
     end process;
 
-    resgiter_instruction : process (clk) is
+    instruction_fetch : process (clk) is
     begin
-        if (rising_edge(clk)) then
+        if (rst_n = '0') then
+            w_instruction <= "0000000000000000";
+        elsif (rising_edge(clk)) then
             if (w_done = '1') then
-                w_instruction <= romdata;    -- fetch rom instruction
+                w_instruction <= romdata; -- fetch rom instruction
             end if;
         end if;
     end process;

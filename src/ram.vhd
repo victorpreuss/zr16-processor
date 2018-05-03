@@ -11,6 +11,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use std.textio.all;
 
 ---------------------------------------------------------------------------
 entity ram is
@@ -36,6 +37,7 @@ architecture arch of ram is
 begin
 
     process (clk, rst_n) is
+        variable L : line;
     begin
         if (rst_n = '0') then
             ramdata <= (others => (others => '0'));
@@ -44,6 +46,33 @@ begin
                 ramdata(to_integer(unsigned(addr))) <= datain;
             end if;
             addrreg <= addr;
+
+            write(L, string'("RAM Content"));
+            writeline(output, L);
+            write(L, to_integer(unsigned(ramdata(2))));
+            writeline(output, L);
+            hwrite(L, ramdata(3));
+            writeline(output, L);
+            hwrite(L, ramdata(4));
+            writeline(output, L);
+            hwrite(L, ramdata(5));
+            writeline(output, L);
+            hwrite(L, ramdata(6));
+            writeline(output, L);
+            hwrite(L, ramdata(7));
+            writeline(output, L);
+            hwrite(L, ramdata(8));
+            writeline(output, L);
+            hwrite(L, ramdata(9));
+            writeline(output, L);
+            --write(L, string'("i = "));
+            --hwrite(L, ramdata(10));
+            --writeline(output, L);
+            --write(L, string'("j = "));
+            --hwrite(L, ramdata(11));
+            --writeline(output, L);
+            --writeline(output, L);
+
         end if;
     end process;
 

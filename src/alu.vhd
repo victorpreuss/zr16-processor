@@ -11,6 +11,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use std.textio.all;
 
 ---------------------------------------------------------------------------
 entity alu is
@@ -53,6 +54,8 @@ begin
         variable C6 : std_logic := '0';
         variable C7 : std_logic := '0';
         variable C8 : std_logic := '0';
+
+        variable L : line;
 
     begin
 
@@ -106,6 +109,45 @@ begin
                 w_V_P  <= C8 xor C7;
                 w_out1 <= std_logic_vector(resp);
 
+            when "0100" => -- CMP
+
+                if (uc = '1' and Cin = '1') then
+                    resp := unsigned(in2) - unsigned(in1) - 1;
+                else
+                    resp := unsigned(in2) - unsigned(in1);
+                end if;
+
+                C0 := Cin when uc = '1' else '0';
+                C1 := (in1(0) and not in2(0)) or (not in2(0) and C0) or (in1(0) and C0);
+                C2 := (in1(1) and not in2(1)) or (not in2(1) and C1) or (in1(1) and C1);
+                C3 := (in1(2) and not in2(2)) or (not in2(2) and C2) or (in1(2) and C2);
+                C4 := (in1(3) and not in2(3)) or (not in2(3) and C3) or (in1(3) and C3);
+                C5 := (in1(4) and not in2(4)) or (not in2(4) and C4) or (in1(4) and C4);
+                C6 := (in1(5) and not in2(5)) or (not in2(5) and C5) or (in1(5) and C5);
+                C7 := (in1(6) and not in2(6)) or (not in2(6) and C6) or (in1(6) and C6);
+                C8 := (in1(7) and not in2(7)) or (not in2(7) and C7) or (in1(7) and C7);
+
+                w_Cout <= C8;
+                w_V_P  <= C8 xor C7;
+
+            when "1000" => -- INC
+
+                resp := unsigned(in2) + 1;
+
+                w_out1 <= std_logic_vector(resp);
+
+                --write(L, string'("oi2"));
+                --writeline(output, L);
+
+            when "1001" => -- DEC
+
+                resp := unsigned(in2) - 1;
+
+                w_out1 <= std_logic_vector(resp);
+
+                --write(L, string'("oi2"));
+                --writeline(output, L);
+
             when others =>
 
                 w_Cout  <= '0';
@@ -114,7 +156,7 @@ begin
 
         end case;
 
-        w_Z <= '1' when (resp = "000000000") else '0';
+        w_Z <= '1' when (resp(7 downto 0) = "00000000") else '0';
 
     end process;
 
