@@ -1,3 +1,5 @@
+etc/code/*bin
+etc/code/*hex
 etc/compiler
 etc/waves
 xilinx
