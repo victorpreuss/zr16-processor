@@ -1,0 +1,7 @@
+- Need to improve ALU entity to avoid latch creation
+- Add comments to control unit instructions and addressing modes
+- Test with simple assembly all implemented instructions
+- Check why serial communication fails sometimes (offset by 2 the registers and memories)
+- Create a debugger entity to put the debug data that needs to be sent via serial
+- Create testbenches for all modules (specially control unit and datapath)
+- Make a table of all instructions and find out which ones are missing
