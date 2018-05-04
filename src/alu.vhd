@@ -156,7 +156,11 @@ begin
 
         end case;
 
-        w_Z <= '1' when (resp(7 downto 0) = "00000000") else '0';
+        if (resp(7 downto 0) = "00000000") then
+            w_Z <= '1';
+        else
+            w_Z <= '0';
+        end if;
 
     end process;
 

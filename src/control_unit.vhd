@@ -25,7 +25,7 @@ entity control_unit is
         ramrw       : out std_logic;
         regrw       : out std_logic;
         pcctrl      : out std_logic_vector(2 downto 0);
-        flagsctrl   : out std_logic;
+        flagsctrl   : out std_logic_vector(2 downto 0);
         aluctrl     : out std_logic_vector(3 downto 0);
         aluoctrl    : out std_logic_vector(2 downto 0);
         aludctrl    : out std_logic;
@@ -53,6 +53,14 @@ architecture arch of control_unit is
     constant DEC  : std_logic_vector(3 downto 0) := "1111";
     constant DJNZ : std_logic_vector(3 downto 0) := "1110";
 
+    constant ANDx : std_logic_vector(3 downto 0) := "0100";
+    constant ORx  : std_logic_vector(3 downto 0) := "0101";
+    constant XORx : std_logic_vector(3 downto 0) := "0110";
+
+    constant ROT : std_logic_vector(3 downto 0) := "1010";
+    constant SHL : std_logic_vector(3 downto 0) := "1011";
+    constant SHA : std_logic_vector(3 downto 0) := "1100";
+
 
     -- addressing modes
     constant REG       : std_logic_vector(1 downto 0) := "00";
@@ -77,7 +85,7 @@ architecture arch of control_unit is
     signal w_ramrw     : std_logic := '0'; -- RAM R/W flag
     signal w_regrw     : std_logic := '0'; -- registers R/W flag
     signal w_pcctrl    : std_logic_vector(2 downto 0) := "000";
-    signal w_flagsctrl : std_logic := '0';
+    signal w_flagsctrl : std_logic_vector(2 downto 0) := "000";
     signal w_aluctrl   : std_logic_vector(3 downto 0) := (others => '0');
     signal w_aluoctrl  : std_logic_vector(2 downto 0) := (others => '0');
     signal w_aludctrl  : std_logic := '0';
@@ -127,7 +135,7 @@ begin
     instruction <= w_instruction;
 
     -- transition of state machine is synchronous
-    sm_sequential : process (clk) is
+    sm_sequential : process (clk, rst_n) is
         variable L : line;
     begin
         if (rst_n = '0') then
@@ -137,7 +145,7 @@ begin
                 when RESET =>
                     w_ramrw <= '0';
                     w_regrw <= '0';
-                    w_flagsctrl <= '0';
+                    w_flagsctrl <= "000";
                     w_pcctrl <= "001";
                     w_done <= '1';
                     state  <= CONTROL_1;
@@ -176,93 +184,156 @@ begin
                     if (opcode = MOV or opcode = ADD or opcode = SUB or
                         opcode = CMP) then
                         if (addrmodeo = REG and addrmoded = REG) then
-                            w_aluoctrl <= "100";
-                            w_aludctrl <= '1';
+                            -- alu inputs
+                            w_aluoctrl <= "100"; -- ro
+                            w_aludctrl <= '1';   -- rd
 
-                            w_regorig <= orig;
-                            w_regdest <= dest;
+                            -- register file in/out
+                            w_regorig <= orig;   -- ro
+                            w_regdest <= dest;   -- rd
 
-                            if (opcode /= CMP) then
-                                w_regrw <= '1';
-                            else
+                            -- CMP does not write to destination
+                            if (opcode = CMP) then
                                 w_regrw <= '0';
+                            else
+                                w_regrw <= '1';
                             end if;
+
+                            -- set alu flags according to the instruction
+                            if (opcode = MOV) then
+                                w_flagsctrl <= "100";
+                            elsif (opcode = ADD or opcode = SUB or opcode = CMP) then
+                                w_flagsctrl <= "111";
+                            elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
+                                w_flagsctrl <= "110";
+                            elsif (opcode = ROT or opcode = SHL or opcode = SHA) then
+                                w_flagsctrl <= "101";
+                            end if;
+
+                            -- keep ram in read mode to avoid overwrite
                             w_ramrw <= '0';
-                            w_flagsctrl <= '1';
                             w_ramctrl <= "00";
 
+                            -- increment pc and enable instruction fetch
                             w_pcctrl <= "001";
                             w_done <= '1';
 
                             state <= CONTROL_1;
                         elsif (addrmodeo = REG_ADDR and addrmoded = REG) then
-                            w_aluoctrl <= "011";
-                            w_aludctrl <= '1';
+                            -- alu inputs
+                            w_aluoctrl <= "011"; -- ram
+                            w_aludctrl <= '1';   -- rd
 
-                            w_regorig <= orig;
-                            w_regdest <= dest;
+                            -- register file in/out
+                            w_regorig <= orig; -- ro
+                            w_regdest <= dest; -- rd
 
-                            w_ramrw <= '0';
+                            -- keep registers in read mode to avoid overwrite
                             w_regrw <= '0';
-                            w_flagsctrl <= '0';
-                            w_ramctrl <= "01";
+                            w_flagsctrl <= "000";
 
+                            -- ram in read mode to get operator
+                            w_ramrw <= '0';
+                            w_ramctrl <= "01"; -- addr comes from ro
+
+                            -- halt pc increment and instruction fetch
                             w_pcctrl <= "000";
                             w_done <= '0';
 
+                            -- next stage of instruction
                             state <= CONTROL_2;
                         elsif (addrmodeo = ADDR and addrmoded = REG) then
-                            w_aluoctrl <= "011";
-                            w_aludctrl <= '1';
+                            --alu inputs
+                            w_aluoctrl <= "011"; -- ram
+                            w_aludctrl <= '1';   -- rd
 
-                            w_regorig <= orig;
-                            w_regdest <= REG0;
+                            -- register file in/out
+                            w_regorig <= orig; -- ro
+                            w_regdest <= REG0; -- r0
 
-                            w_ramrw <= '0';
+                            -- keep registers in read mode to avoid overwrite
                             w_regrw <= '0';
-                            w_flagsctrl <= '0';
-                            w_ramctrl <= "00";
+                            w_flagsctrl <= "000";
 
+                            -- ram in read mode to get operator
+                            w_ramrw <= '0';
+                            w_ramctrl <= "00"; -- addr comes from immediate
+
+                            -- halt pc increment and instruction fetch
                             w_pcctrl <= "000";
                             w_done <= '0';
 
+                            -- next stage of instruction
                             state <= CONTROL_2;
                         elsif (addrmodeo = IMMEDIATE and addrmoded = REG) then
-                            w_aluoctrl <= "000";
-                            w_aludctrl <= '1';
+                            -- alu inputs
+                            w_aluoctrl <= "000"; -- immediate
+                            w_aludctrl <= '1';   -- rd
 
-                            w_regorig <= orig;
-                            w_regdest <= REG0;
+                            w_regorig <= orig; -- ro
+                            w_regdest <= REG0; -- r0
 
-                            if (opcode /= CMP) then
-                                w_regrw <= '1';
-                            else
+                            -- CMP does not write to destination
+                            if (opcode = CMP) then
                                 w_regrw <= '0';
+                            else
+                                w_regrw <= '1';
                             end if;
+
+                            -- set alu flags according to the instruction
+                            if (opcode = MOV) then
+                                w_flagsctrl <= "100";
+                            elsif (opcode = ADD or opcode = SUB or opcode = CMP) then
+                                w_flagsctrl <= "111";
+                            elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
+                                w_flagsctrl <= "110";
+                            elsif (opcode = ROT or opcode = SHL or opcode = SHA) then
+                                w_flagsctrl <= "101";
+                            end if;
+
+                            -- keep ram in read mode to avoid overwrite
                             w_ramrw <= '0';
-                            w_flagsctrl <= '1';
                             w_ramctrl <= "00";
 
+                            -- increment pc and enable instruction fetch
                             w_pcctrl <= "001";
                             w_done <= '1';
 
                             state <= CONTROL_1;
                         elsif (addrmodeo = REG and addrmoded = REG_ADDR) then
-                            w_aluoctrl <= "100";
-                            w_aludctrl <= '0';
+                            -- alu inputs
+                            w_aluoctrl <= "100"; -- ro
+                            w_aludctrl <= '0';   -- ram
 
-                            w_regorig <= orig;
-                            w_regdest <= dest;
+                            -- register file in/out
+                            w_regorig <= orig; -- ro
+                            w_regdest <= dest; -- rd
 
-                            if (opcode /= CMP) then
-                                w_ramrw <= '1';
-                            else
-                                w_ramrw <= '0';
-                            end if;
+                            -- keep registers in read mode to avoid overwrite
                             w_regrw <= '0';
-                            w_flagsctrl <= '1';
-                            w_ramctrl <= "10";
 
+                            -- set alu flags according to the instruction
+                            if (opcode = MOV) then
+                                w_flagsctrl <= "100";
+                            elsif (opcode = ADD or opcode = SUB or opcode = CMP) then
+                                w_flagsctrl <= "111";
+                            elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
+                                w_flagsctrl <= "110";
+                            elsif (opcode = ROT or opcode = SHL or opcode = SHA) then
+                                w_flagsctrl <= "101";
+                            end if;
+
+                            -- CMP does not write to destination
+                            if (opcode = CMP) then
+                                w_ramrw <= '0';
+                            else
+                                w_ramrw <= '1'; -- set ram to write mode
+                            end if;
+
+                            -- set ram addr source
+                            w_ramctrl <= "10"; -- (rd)
+
+                            -- increment pc and enable instruction fetch
                             w_pcctrl <= "001";
                             w_done <= '1';
 
@@ -274,15 +345,31 @@ begin
                             w_regorig <= REG0;
                             w_regdest <= dest;
 
-                            if (opcode /= CMP) then
-                                w_ramrw <= '1';
-                            else
-                                w_ramrw <= '0';
-                            end if;
+                            -- keep registers in read mode to avoid overwrite
                             w_regrw <= '0';
-                            w_flagsctrl <= '1';
-                            w_ramctrl <= "00";
 
+                            -- set alu flags according to the instruction
+                            if (opcode = MOV) then
+                                w_flagsctrl <= "100";
+                            elsif (opcode = ADD or opcode = SUB or opcode = CMP) then
+                                w_flagsctrl <= "111";
+                            elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
+                                w_flagsctrl <= "110";
+                            elsif (opcode = ROT or opcode = SHL or opcode = SHA) then
+                                w_flagsctrl <= "101";
+                            end if;
+
+                            -- CMP does not write to destination
+                            if (opcode = CMP) then
+                                w_ramrw <= '0';
+                            else
+                                w_ramrw <= '1'; -- set ram to write mode
+                            end if;
+
+                            -- set ram addr source
+                            w_ramctrl <= "00"; -- immediate address
+
+                            -- increment pc and enable instruction fetch
                             w_pcctrl <= "001";
                             w_done <= '1';
 
@@ -297,7 +384,7 @@ begin
 
                         w_ramrw <= '0';
                         w_regrw <= '1';
-                        w_flagsctrl <= '1';
+                        w_flagsctrl <= "100";
                         w_ramctrl <= "00";
 
                         w_pcctrl <= "001";
@@ -313,7 +400,7 @@ begin
 
                             w_ramrw <= '0';
                             w_regrw <= '0';
-                            w_flagsctrl <= '0';
+                            w_flagsctrl <= "000";
 
                             w_pcctrl <= "101";
                             w_done <= '0';
@@ -332,7 +419,7 @@ begin
 
                             w_ramrw <= '0';
                             w_regrw <= '0';
-                            w_flagsctrl <= '0';
+                            w_flagsctrl <= "000";
 
                             w_pcctrl <= "101";
                             w_done <= '0';
@@ -341,7 +428,7 @@ begin
                         else
                             w_ramrw <= '0';
                             w_regrw <= '0';
-                            w_flagsctrl <= '0';
+                            w_flagsctrl <= "000";
 
                             w_pcctrl <= "001";
                             w_done <= '1';
@@ -349,14 +436,7 @@ begin
                             state <= CONTROL_1;
                         end if;
                     elsif (opcode = INC) then -- DEC has the same opcode
-                        if (addrmoded = REG) then
-
-                        elsif (addrmoded = REG_ADDR) then
-
-                        elsif (addrmoded = ADDR) then
-                            --write(L, string'("oi1"));
-                            --writeline(output, L);
-
+                        if (addrmoded = ADDR) then
                             w_aluoctrl <= "000";
                             w_aludctrl <= '0';
 
@@ -365,7 +445,7 @@ begin
 
                             w_ramrw <= '0';
                             w_regrw <= '0';
-                            w_flagsctrl <= '0';
+                            w_flagsctrl <= "000";
                             w_ramctrl <= "00";
 
                             w_pcctrl <= "000";
@@ -390,7 +470,7 @@ begin
 
                         w_ramrw <= '0';
                         w_regrw <= '0';
-                        w_flagsctrl <= '0';
+                        w_flagsctrl <= "000";
                         w_ramctrl <= "00";
 
                         w_pcctrl <= "000";
@@ -406,39 +486,53 @@ begin
                     if (opcode = MOV or opcode = ADD or opcode = SUB or
                         opcode = CMP) then
                         if (addrmodeo = REG_ADDR and addrmoded = REG) then
-                            w_aluoctrl <= "011";
-                            w_aludctrl <= '1';
-
-                            w_regorig <= orig;
-                            w_regdest <= dest;
-
-                            if (opcode /= CMP) then
-                                w_regrw <= '1';
-                            else
+                            -- CMP does not write to destination
+                            if (opcode = CMP) then
                                 w_regrw <= '0';
+                            else
+                                w_regrw <= '1';
                             end if;
+
+                            -- set alu flags according to the instruction
+                            if (opcode = MOV) then
+                                w_flagsctrl <= "100";
+                            elsif (opcode = ADD or opcode = SUB or opcode = CMP) then
+                                w_flagsctrl <= "111";
+                            elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
+                                w_flagsctrl <= "110";
+                            elsif (opcode = ROT or opcode = SHL or opcode = SHA) then
+                                w_flagsctrl <= "101";
+                            end if;
+
+                            -- ram doesn't matter
                             w_ramrw <= '0';
-                            w_flagsctrl <= '1';
-                            w_ramctrl <= "00";
+                            w_ramctrl <= "01";
 
                             w_pcctrl <= "001";
                             w_done <= '1';
 
                             state <= CONTROL_1;
                         elsif (addrmodeo = ADDR and addrmoded = REG) then
-                            w_aluoctrl <= "011";
-                            w_aludctrl <= '1';
-
-                            w_regorig <= orig;
-                            w_regdest <= REG0;
-
-                            if (opcode /= CMP) then
-                                w_regrw <= '1';
-                            else
+                            -- CMP does not write to destination
+                            if (opcode = CMP) then
                                 w_regrw <= '0';
+                            else
+                                w_regrw <= '1';
                             end if;
+
+                            -- set alu flags according to the instruction
+                            if (opcode = MOV) then
+                                w_flagsctrl <= "100";
+                            elsif (opcode = ADD or opcode = SUB or opcode = CMP) then
+                                w_flagsctrl <= "111";
+                            elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
+                                w_flagsctrl <= "110";
+                            elsif (opcode = ROT or opcode = SHL or opcode = SHA) then
+                                w_flagsctrl <= "101";
+                            end if;
+
+                            -- ram doesn't matter
                             w_ramrw <= '0';
-                            w_flagsctrl <= '1';
                             w_ramctrl <= "00";
 
                             w_pcctrl <= "001";
@@ -452,7 +546,7 @@ begin
 
                             w_ramrw <= '0';
                             w_regrw <= '0';
-                            w_flagsctrl <= '0';
+                            w_flagsctrl <= "000";
 
                             w_pcctrl <= "001";
                             w_done <= '1';
@@ -464,7 +558,7 @@ begin
 
                         w_ramrw <= '0';
                         w_regrw <= '0';
-                        w_flagsctrl <= '0';
+                        w_flagsctrl <= "000";
 
                         w_pcctrl <= "001";
                         w_done <= '1';
@@ -484,7 +578,7 @@ begin
 
                             w_ramrw <= '1';
                             w_regrw <= '0';
-                            w_flagsctrl <= '1';
+                            w_flagsctrl <= "100";
                             w_ramctrl <= "00";
 
                             w_pcctrl <= "001";
@@ -500,7 +594,7 @@ begin
 
                         w_ramrw <= '0';
                         w_regrw <= '1';
-                        w_flagsctrl <= '1';
+                        w_flagsctrl <= "100";
 
                         if (Z = '1') then
                             w_pcctrl <= "101";
@@ -522,7 +616,7 @@ begin
 
                         w_ramrw <= '0';
                         w_regrw <= '0';
-                        w_flagsctrl <= '0';
+                        w_flagsctrl <= "000";
 
                         w_pcctrl <= "001";
                         w_done <= '1';
@@ -536,7 +630,7 @@ begin
         end if;
     end process;
 
-    instruction_fetch : process (clk) is
+    instruction_fetch : process (clk, rst_n) is
     begin
         if (rst_n = '0') then
             w_instruction <= "0000000000000000";

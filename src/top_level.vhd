@@ -11,153 +11,26 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use std.textio.all;
+use work.typedefs.all;
 
 ---------------------------------------------------------------------------
 entity top_level is
+port (
+    clk     : in std_logic;
+    rst_n   : in std_logic;
+    rx      : in  std_logic;
+    tx      : out std_logic;
+    led     : out std_logic_vector(7 downto 0)
+);
 end entity;
 
 ---------------------------------------------------------------------------
 architecture arch of top_level is
 
-    component clk_gen is
-    port (
-        clk : out std_logic
-    );
-    end component;
-
-    component rom is
-    generic (
-        DATA_SIZE : integer;
-        ADDR_SIZE : integer;
-        MEM_SIZE  : integer
-    );
-    port (
-        clk     : in std_logic;
-        addr    : in std_logic_vector(ADDR_SIZE-1 downto 0);
-        data    : out std_logic_vector(DATA_SIZE-1 downto 0)
-    );
-    end component;
-
-    component mux2 is
-    generic (
-        LENGTH : integer
-    );
-    port (
-        ctrl : in std_logic;
-        in1  : in std_logic_vector(LENGTH-1 downto 0);
-        in2  : in std_logic_vector(LENGTH-1 downto 0);
-        out1 : out std_logic_vector(LENGTH-1 downto 0)
-    );
-    end component;
-
-    component mux4 is
-    generic (
-        LENGTH : integer
-    );
-    port (
-        ctrl : in std_logic_vector(1 downto 0);
-        in1  : in std_logic_vector(LENGTH-1 downto 0);
-        in2  : in std_logic_vector(LENGTH-1 downto 0);
-        in3  : in std_logic_vector(LENGTH-1 downto 0);
-        in4  : in std_logic_vector(LENGTH-1 downto 0);
-        out1 : out std_logic_vector(LENGTH-1 downto 0)
-    );
-    end component;
-
-    component mux8 is
-    generic (
-        LENGTH : integer
-    );
-    port (
-        ctrl : in std_logic_vector(2 downto 0);
-        in1  : in std_logic_vector(LENGTH-1 downto 0);
-        in2  : in std_logic_vector(LENGTH-1 downto 0);
-        in3  : in std_logic_vector(LENGTH-1 downto 0);
-        in4  : in std_logic_vector(LENGTH-1 downto 0);
-        in5  : in std_logic_vector(LENGTH-1 downto 0);
-        in6  : in std_logic_vector(LENGTH-1 downto 0);
-        in7  : in std_logic_vector(LENGTH-1 downto 0);
-        in8  : in std_logic_vector(LENGTH-1 downto 0);
-        out1 : out std_logic_vector(LENGTH-1 downto 0)
-    );
-    end component;
-
-    component register_file is
-    port (
-        clk     : in std_logic;
-        rw      : in std_logic;
-        addro   : in std_logic_vector(1 downto 0);
-        pcctrl  : in std_logic_vector(2 downto 0);
-        in1     : in std_logic_vector(3 downto 0);
-        in2     : in std_logic_vector(3 downto 0);
-        alu     : in std_logic_vector(7 downto 0);
-        flags   : in std_logic_vector(2 downto 0);
-        flctrl  : in std_logic;
-        ro      : out std_logic_vector(7 downto 0);
-        rd      : out std_logic_vector(7 downto 0);
-        r13     : out std_logic_vector(7 downto 0);
-        r14     : out std_logic_vector(7 downto 0);
-        r15     : out std_logic_vector(7 downto 0);
-        pc      : out std_logic_vector(9 downto 0)
-    );
-    end component;
-
-    component alu is
-    port (
-        op      : in std_logic_vector(3 downto 0);
-        Cin     : in std_logic;
-        uc      : in std_logic;
-        ed      : in std_logic;
-        in1     : in std_logic_vector(7 downto 0);
-        in2     : in std_logic_vector(7 downto 0);
-        out1    : out std_logic_vector(7 downto 0);
-        Z       : out std_logic;
-        Cout    : out std_logic;
-        V_P     : out std_logic
-    );
-    end component;
-
-    component control_unit is
-    port (
-        clk         : in std_logic;
-        rst_n       : in std_logic;
-        romdata     : in std_logic_vector(15 downto 0);
-        aluflags    : std_logic_vector(2 downto 0);
-        romctrl     : out std_logic_vector(1 downto 0);
-        ramctrl     : out std_logic_vector(1 downto 0);
-        ramrw       : out std_logic;
-        regrw       : out std_logic;
-        pcctrl      : out std_logic_vector(2 downto 0);
-        flagsctrl   : out std_logic;
-        aluctrl     : out std_logic_vector(3 downto 0);
-        aluoctrl    : out std_logic_vector(2 downto 0);
-        aludctrl    : out std_logic;
-        regorig     : out std_logic_vector(3 downto 0);
-        regdest     : out std_logic_vector(3 downto 0);
-        instruction : out std_logic_vector(15 downto 0)
-    );
-    end component;
-
-    component ram is
-    port (
-        clk      : in std_logic;
-        rst_n    : in std_logic;
-        rw       : in std_logic;
-        addr     : in std_logic_vector(7 downto 0);
-        datain   : in std_logic_vector(7 downto 0);
-        dataout  : out std_logic_vector(7 downto 0)
-    );
-    end component;
-
     -- the rom memory is 1024x16 and the addresses are 10 bits long
     constant ROM_ADDR   : integer := 10;
     constant ROM_DATA   : integer := 16;
     constant ROM_SIZE   : integer := 1024;
-
-    -- clock and reset
-    signal clk   : std_logic := '0';
-    signal rst_n : std_logic := '1';
 
     -- rom inputs
     signal romaddr : std_logic_vector(9 downto 0) := (others => '0');
@@ -205,7 +78,7 @@ architecture arch of top_level is
     signal ramrw     : std_logic := '0';
     signal regrw     : std_logic := '0';
     signal pcctrl    : std_logic_vector(2 downto 0) := "000";
-    signal flagsctrl : std_logic := '0';
+    signal flagsctrl : std_logic_vector(2 downto 0) := "000";
     signal aluctrl   : std_logic_vector(3 downto 0) := (others => '0');
     signal aluoctrl  : std_logic_vector(2 downto 0) := (others => '0');
     signal aludctrl  : std_logic := '0';
@@ -215,16 +88,32 @@ architecture arch of top_level is
     signal ramdatain  : std_logic_vector(7 downto 0);
     signal ramdataout : std_logic_vector(7 downto 0);
 
-begin
+    -- uart
+    signal new_rxdata : std_logic := '0';
+    signal new_txdata : std_logic := '0';
+    signal rxdata : std_logic_vector(7 downto 0);
+    signal txdata : std_logic_vector(7 downto 0);
+    signal txbusy : std_logic := '0';
+    signal txdone : std_logic := '0';
 
-    clk_inst : clk_gen
-    port map (
-        clk => clk
-    );
+    signal txdebug : std_logic := '0';
+
+    -- processor clk
+    signal clksrc   : std_logic := '0';
+
+    type tx_send_t is (IDLE, TRANSFER);
+    signal state : tx_send_t := IDLE;
+    
+    signal ramdebug  : bytearray_t(255 downto 0);
+    signal regdebug  : bytearray_t(15 downto 0);
+    signal debugdata : bytearray_t(31 downto 0);
+    signal idx : integer := 0;
+    signal idx_ram : integer := 0;
+
+begin
 
     rom_inst : rom generic map(ROM_DATA, ROM_ADDR, ROM_SIZE)
     port map (
-        clk  => clk,
         addr => romaddr,
         data => romdata
     );
@@ -243,7 +132,7 @@ begin
 
     registers_inst : register_file
     port map (
-        clk     => clk,
+        clk     => clksrc,
         rw      => regrw,
         addro   => addrmodeo,
         pcctrl  => pcctrl,
@@ -254,10 +143,9 @@ begin
         flctrl  => flagsctrl,
         ro      => ro,
         rd      => rd,
-        r13     => r13,
-        r14     => r14,
         r15     => r15,
-        pc      => pc
+        pc      => pc,
+        regdebug => regdebug
     );
 
     mux_alu_o_inst : mux8 generic map(8)
@@ -298,7 +186,7 @@ begin
 
     control_unit_inst : control_unit
     port map (
-        clk         => clk,
+        clk         => clksrc,
         rst_n       => rst_n,
         romdata     => romdata,
         aluflags    => r15(7 downto 5),
@@ -328,12 +216,83 @@ begin
 
     ram_inst : ram
     port map (
-        clk     => clk,
+        clk     => clksrc,
         rst_n   => rst_n,
         rw      => ramrw,
         addr    => ramaddr,
         datain  => aluout,
-        dataout => ramdataout
+        dataout => ramdataout,
+        ramdebug => ramdebug
     );
+
+    receiver : entity work.uart_rx
+    port map (
+        clk => clk,
+        rx => rx,
+        new_data => new_rxdata,
+        data => rxdata
+    );
+
+    transmitter : entity work.uart_tx
+    port map (
+        clk => clk,
+        new_data => new_txdata,
+        in_byte => txdata,
+        busy => txbusy,
+        done => txdone,
+        tx_out => tx
+    );
+    
+    debugdata(15 downto 0)  <= regdebug;
+    debugdata(31 downto 16) <= ramdebug(15 downto 0);
+
+    -- on the arrival of new data, register the new pattern
+    process (clk) is
+    begin
+        if (rising_edge(clk)) then
+            if (new_rxdata = '1') then
+                if (rxdata = x"71") then
+                    clksrc <= '1';
+                    txdebug <= '1';
+                end if;
+            else
+                clksrc <= '0';
+                txdebug <= '0';
+            end if;
+        end if;
+    end process;
+
+    process (clk) is
+    begin
+        if (rising_edge(clk)) then
+            case (state) is
+                when IDLE =>
+                    idx <= 0;
+                    if (txbusy = '0' and txdebug = '1') then
+                        state <= TRANSFER;
+                        txdata <= regdebug(idx);
+                        new_txdata <= '1';
+                        idx <= idx + 1;
+                    end if;
+                when TRANSFER =>
+                    new_txdata <= '0';
+                    if (txdone = '1') then
+                        if (idx < 32) then
+                            state <= TRANSFER;
+                            txdata <= debugdata(idx);
+                            new_txdata <= '1';
+                            idx <= idx + 1;
+                        else
+                            idx <= 0;
+                            state <= IDLE;
+                        end if;
+                    end if;
+                when others =>
+                    state <= IDLE;
+            end case;
+        end if;
+    end process;
+
+    led <= aluout;
 
 end architecture;
