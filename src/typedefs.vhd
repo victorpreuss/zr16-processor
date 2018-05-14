@@ -2,8 +2,8 @@
 -- Company     : Universidade Federal de Santa Catarina
 -- Author(s)   : Victor H B Preuss
 --
--- Creation Date : 27/04/2018
--- File          : ram.vhd
+-- Creation Date : 04/05/2018
+-- File          : typedefs.vhd
 --
 -- Abstract :
 --

@@ -78,12 +78,16 @@ begin
                             state <= WAIT_BIT;
                         else
                             idx <= 0;
-                            new_data_reg <= '1';
                             state <= WAIT_STOP;
                         end if;
                     end if;
                 when WAIT_STOP =>
-                    if (rx = '1') then
+                    if (counter < CLKS_PER_BIT) then
+                        counter <= counter + 1;
+                        state <= WAIT_STOP;
+                    else
+                        new_data_reg <= '1';
+                        counter <= 0;
                         state <= IDLE;
                     end if;
                 when others =>
