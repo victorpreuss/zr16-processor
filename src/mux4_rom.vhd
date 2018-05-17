@@ -2,8 +2,8 @@
 -- Company     : Universidade Federal de Santa Catarina
 -- Author(s)   : Victor H B Preuss
 --
--- Creation Date : 14/04/2018
--- File          : mux4.vhd
+-- Creation Date : 17/05/2018
+-- File          : mux4_rom.vhd
 --
 -- Abstract :
 --
@@ -13,9 +13,9 @@ use ieee.std_logic_1164.ALL;
 use ieee.numeric_std.all;
 
 ---------------------------------------------------------------------------
-entity mux4 is
+entity mux4_rom is
     generic (
-        LENGTH : integer := 8
+        LENGTH : integer := 10
     );
     port (
         ctrl : in std_logic_vector(1 downto 0);
@@ -28,7 +28,7 @@ entity mux4 is
 end entity;
 
 ---------------------------------------------------------------------------
-architecture arch of mux4 is
+architecture arch of mux4_rom is
 
 begin
 

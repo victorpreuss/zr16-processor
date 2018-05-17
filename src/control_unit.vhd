@@ -18,9 +18,10 @@ entity control_unit is
     port (
         clk         : in std_logic;
         rst_n       : in std_logic;
-        romdata     : in std_logic_vector(15 downto 0);
+        instruction : in std_logic_vector(15 downto 0);
         aluflags    : in std_logic_vector(2 downto 0);
         romctrl     : out std_logic_vector(1 downto 0);
+        irctrl      : out std_logic;
         ramctrl     : out std_logic_vector(1 downto 0);
         ramrw       : out std_logic;
         regrw       : out std_logic;
@@ -30,8 +31,7 @@ entity control_unit is
         aluoctrl    : out std_logic_vector(2 downto 0);
         aludctrl    : out std_logic;
         regorig     : out std_logic_vector(3 downto 0);
-        regdest     : out std_logic_vector(3 downto 0);
-        instruction : out std_logic_vector(15 downto 0)
+        regdest     : out std_logic_vector(3 downto 0)
     );
 end entity;
 
@@ -81,6 +81,7 @@ architecture arch of control_unit is
 
     -- control signals
     signal w_romctrl   : std_logic_vector(1 downto 0) := "00";
+    signal w_irctrl    : std_logic := '0'; -- instruction register
     signal w_ramctrl   : std_logic_vector(1 downto 0) := "00";
     signal w_ramrw     : std_logic := '0'; -- RAM R/W flag
     signal w_regrw     : std_logic := '0'; -- registers R/W flag
@@ -93,33 +94,29 @@ architecture arch of control_unit is
     signal w_regorig : std_logic_vector(3 downto 0) := (others => '0');
     signal w_regdest : std_logic_vector(3 downto 0) := (others => '0');
 
-    -- instruction registers
-    signal w_instruction : std_logic_vector(15 downto 0) := (others => '0');
-
     -- instruction decode
-    alias opcode      : std_logic_vector(3 downto 0) is w_instruction(15 downto 12); -- opcode
+    alias opcode      : std_logic_vector(3 downto 0) is instruction(15 downto 12); -- opcode
 
-    alias addrmoded   : std_logic_vector(1 downto 0) is w_instruction(11 downto 10); -- addrmode of dest
-    alias addrmodeo   : std_logic_vector(1 downto 0) is w_instruction(9 downto 8);   -- addrmode of orig
+    alias addrmoded   : std_logic_vector(1 downto 0) is instruction(11 downto 10); -- addrmode of dest
+    alias addrmodeo   : std_logic_vector(1 downto 0) is instruction(9 downto 8);   -- addrmode of orig
 
-    alias dest    : std_logic_vector(3 downto 0) is w_instruction(7 downto 4);   -- destination
-    alias orig    : std_logic_vector(3 downto 0) is w_instruction(3 downto 0);   -- origin
+    alias dest    : std_logic_vector(3 downto 0) is instruction(7 downto 4);   -- destination
+    alias orig    : std_logic_vector(3 downto 0) is instruction(3 downto 0);   -- origin
 
-    alias immed   : std_logic_vector(7 downto 0) is w_instruction(7 downto 0);
-    alias memaddr : std_logic_vector(7 downto 0) is w_instruction(7 downto 0);
+    alias immed   : std_logic_vector(7 downto 0) is instruction(7 downto 0);
+    alias memaddr : std_logic_vector(7 downto 0) is instruction(7 downto 0);
 
-    alias mvsdest : std_logic_vector(3 downto 0) is w_instruction(11 downto 8);
+    alias mvsdest : std_logic_vector(3 downto 0) is instruction(11 downto 8);
 
     -- alu flags
     alias Z     : std_logic is aluflags(2);
     alias C     : std_logic is aluflags(1);
     alias V_P   : std_logic is aluflags(0);
 
-    signal w_done : std_logic := '0';
-
 begin
 
     romctrl   <= w_romctrl;
+    irctrl    <= w_irctrl;
     ramctrl   <= w_ramctrl;
     ramrw     <= w_ramrw;
     regrw     <= w_regrw;
@@ -131,8 +128,6 @@ begin
 
     regorig <= w_regorig;
     regdest <= w_regdest;
-
-    instruction <= w_instruction;
 
     -- transition of state machine is synchronous
     sm_sequential : process (clk, rst_n) is
@@ -147,7 +142,7 @@ begin
                     w_regrw <= '0';
                     w_flagsctrl <= "000";
                     w_pcctrl <= "001";
-                    w_done <= '1';
+                    w_irctrl <= '1';
                     state  <= CONTROL_1;
 
                 when CONTROL_1 =>
@@ -169,9 +164,9 @@ begin
                         when JZ => -- JNZ, JC and JVP have the same opcode
                             w_aluctrl <= "0000";
                         when INC => -- DEC has the same opcode
-                            if (w_instruction(8) = '0') then
+                            if (instruction(8) = '0') then
                                 w_aluctrl <= "1000"; -- INC
-                            elsif (w_instruction(8) = '1') then
+                            elsif (instruction(8) = '1') then
                                 w_aluctrl <= "1001"; -- DEC
                             end if;
                         when DJNZ =>
@@ -216,7 +211,7 @@ begin
 
                             -- increment pc and enable instruction fetch
                             w_pcctrl <= "001";
-                            w_done <= '1';
+                            w_irctrl <= '1';
 
                             state <= CONTROL_1;
                         elsif (addrmodeo = REG_ADDR and addrmoded = REG) then
@@ -238,7 +233,7 @@ begin
 
                             -- halt pc increment and instruction fetch
                             w_pcctrl <= "000";
-                            w_done <= '0';
+                            w_irctrl <= '0';
 
                             -- next stage of instruction
                             state <= CONTROL_2;
@@ -261,7 +256,7 @@ begin
 
                             -- halt pc increment and instruction fetch
                             w_pcctrl <= "000";
-                            w_done <= '0';
+                            w_irctrl <= '0';
 
                             -- next stage of instruction
                             state <= CONTROL_2;
@@ -297,7 +292,7 @@ begin
 
                             -- increment pc and enable instruction fetch
                             w_pcctrl <= "001";
-                            w_done <= '1';
+                            w_irctrl <= '1';
 
                             state <= CONTROL_1;
                         elsif (addrmodeo = REG and addrmoded = REG_ADDR) then
@@ -335,7 +330,7 @@ begin
 
                             -- increment pc and enable instruction fetch
                             w_pcctrl <= "001";
-                            w_done <= '1';
+                            w_irctrl <= '1';
 
                             state <= CONTROL_1;
                         elsif (addrmodeo = REG and addrmoded = ADDR) then
@@ -371,7 +366,7 @@ begin
 
                             -- increment pc and enable instruction fetch
                             w_pcctrl <= "001";
-                            w_done <= '1';
+                            w_irctrl <= '1';
 
                             state <= CONTROL_1;
                         end if;
@@ -388,7 +383,7 @@ begin
                         w_ramctrl <= "00";
 
                         w_pcctrl <= "001";
-                        w_done <= '1';
+                        w_irctrl <= '1';
 
                         state <= CONTROL_1;
                     elsif (opcode = JMP) then
@@ -403,7 +398,7 @@ begin
                             w_flagsctrl <= "000";
 
                             w_pcctrl <= "101";
-                            w_done <= '0';
+                            w_irctrl <= '0';
 
                             state <= CONTROL_2;
                         end if;
@@ -422,7 +417,7 @@ begin
                             w_flagsctrl <= "000";
 
                             w_pcctrl <= "101";
-                            w_done <= '0';
+                            w_irctrl <= '0';
 
                             state <= CONTROL_2;
                         else
@@ -431,7 +426,7 @@ begin
                             w_flagsctrl <= "000";
 
                             w_pcctrl <= "001";
-                            w_done <= '1';
+                            w_irctrl <= '1';
 
                             state <= CONTROL_1;
                         end if;
@@ -449,7 +444,7 @@ begin
                             w_ramctrl <= "00";
 
                             w_pcctrl <= "000";
-                            w_done <= '0';
+                            w_irctrl <= '0';
 
                             state <= CONTROL_2;
                         end if;
@@ -474,7 +469,7 @@ begin
                         w_ramctrl <= "00";
 
                         w_pcctrl <= "000";
-                        w_done <= '0';
+                        w_irctrl <= '0';
 
                         state <= CONTROL_2;
                     else
@@ -509,7 +504,7 @@ begin
                             w_ramctrl <= "01";
 
                             w_pcctrl <= "001";
-                            w_done <= '1';
+                            w_irctrl <= '1';
 
                             state <= CONTROL_1;
                         elsif (addrmodeo = ADDR and addrmoded = REG) then
@@ -536,7 +531,7 @@ begin
                             w_ramctrl <= "00";
 
                             w_pcctrl <= "001";
-                            w_done <= '1';
+                            w_irctrl <= '1';
 
                             state <= CONTROL_1;
                         end if;
@@ -549,7 +544,7 @@ begin
                             w_flagsctrl <= "000";
 
                             w_pcctrl <= "001";
-                            w_done <= '1';
+                            w_irctrl <= '1';
 
                             state <= CONTROL_1;
                         end if;
@@ -561,7 +556,7 @@ begin
                         w_flagsctrl <= "000";
 
                         w_pcctrl <= "001";
-                        w_done <= '1';
+                        w_irctrl <= '1';
 
                         state <= CONTROL_1;
                     elsif (opcode = INC) then -- DEC has the same opcode
@@ -582,7 +577,7 @@ begin
                             w_ramctrl <= "00";
 
                             w_pcctrl <= "001";
-                            w_done <= '1';
+                            w_irctrl <= '1';
 
                             state <= CONTROL_1;
                         end if;
@@ -598,12 +593,12 @@ begin
 
                         if (Z = '1') then
                             w_pcctrl <= "101";
-                            w_done <= '0';
+                            w_irctrl <= '0';
 
                             state <= CONTROL_3;
                         else
                             w_pcctrl <= "001";
-                            w_done <= '1';
+                            w_irctrl <= '1';
 
                             state <= CONTROL_1;
                         end if;
@@ -619,7 +614,7 @@ begin
                         w_flagsctrl <= "000";
 
                         w_pcctrl <= "001";
-                        w_done <= '1';
+                        w_irctrl <= '1';
 
                         state <= CONTROL_1;
                     end if;
@@ -627,17 +622,6 @@ begin
                 when others =>
                     state <= RESET;
             end case;
-        end if;
-    end process;
-
-    instruction_fetch : process (clk, rst_n) is
-    begin
-        if (rst_n = '0') then
-            w_instruction <= "0000000000000000";
-        elsif (rising_edge(clk)) then
-            if (w_done = '1') then
-                w_instruction <= romdata; -- fetch rom instruction
-            end if;
         end if;
     end process;
 

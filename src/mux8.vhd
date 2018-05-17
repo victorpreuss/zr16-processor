@@ -1,11 +1,11 @@
 ---------------------------------------------------------------------------
 -- Company     : Universidade Federal de Santa Catarina
 -- Author(s)   : Victor H B Preuss
--- 
+--
 -- Creation Date : 18/04/2018
 -- File          : mux8.vhd
 --
--- Abstract : 
+-- Abstract :
 --
 ---------------------------------------------------------------------------
 library ieee;
@@ -15,7 +15,7 @@ use ieee.numeric_std.all;
 ---------------------------------------------------------------------------
 entity mux8 is
     generic (
-        LENGTH : integer
+        LENGTH : integer := 8
     );
     port (
         ctrl : in std_logic_vector(2 downto 0);
@@ -48,4 +48,3 @@ begin
                 (others => '0') when others;
 
 end architecture;
-

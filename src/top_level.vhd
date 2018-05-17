@@ -3,7 +3,7 @@
 -- Author(s)   : Victor H B Preuss
 --
 -- Creation Date : 14/04/2018
--- File          : main.vhd
+-- File          : top_level.vhd
 --
 -- Abstract :
 --
@@ -103,7 +103,7 @@ architecture arch of top_level is
 
     type tx_send_t is (IDLE, TRANSFER);
     signal state : tx_send_t := IDLE;
-    
+
     signal ramdebug  : bytearray_t(255 downto 0);
     signal regdebug  : bytearray_t(15 downto 0);
     signal debugdata : bytearray_t(31 downto 0);
@@ -242,7 +242,7 @@ begin
         done => txdone,
         tx_out => tx
     );
-    
+
     debugdata(15 downto 0)  <= regdebug;
     debugdata(31 downto 16) <= ramdebug(15 downto 0);
 

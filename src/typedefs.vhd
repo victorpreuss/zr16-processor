@@ -17,7 +17,7 @@ package typedefs is
 
     subtype byte_t is std_logic_vector(7 downto 0);
     type bytearray_t is array(natural range <>) of byte_t;
-    
+
     component rom is
     generic (
         DATA_SIZE : integer;
@@ -27,6 +27,30 @@ package typedefs is
     port (
         addr    : in std_logic_vector(ADDR_SIZE-1 downto 0);
         data    : out std_logic_vector(DATA_SIZE-1 downto 0)
+    );
+    end component;
+
+    component mux4_rom is
+    generic (
+        LENGTH : integer
+    );
+    port (
+        ctrl : in std_logic_vector(1 downto 0);
+        in1  : in std_logic_vector(LENGTH-1 downto 0);
+        in2  : in std_logic_vector(LENGTH-1 downto 0);
+        in3  : in std_logic_vector(LENGTH-1 downto 0);
+        in4  : in std_logic_vector(LENGTH-1 downto 0);
+        out1 : out std_logic_vector(LENGTH-1 downto 0)
+    );
+    end component;
+
+    component instruction_register is
+    port (
+        clk         : in std_logic;
+        rst_n       : in std_logic;
+        en          : in std_logic;
+        romdata     : in std_logic_vector(15 downto 0);
+        instruction : out std_logic_vector(15 downto 0)
     );
     end component;
 
@@ -112,9 +136,10 @@ package typedefs is
     port (
         clk         : in std_logic;
         rst_n       : in std_logic;
-        romdata     : in std_logic_vector(15 downto 0);
-        aluflags    : std_logic_vector(2 downto 0);
+        instruction : in std_logic_vector(15 downto 0);
+        aluflags    : in std_logic_vector(2 downto 0);
         romctrl     : out std_logic_vector(1 downto 0);
+        irctrl      : out std_logic;
         ramctrl     : out std_logic_vector(1 downto 0);
         ramrw       : out std_logic;
         regrw       : out std_logic;
@@ -124,8 +149,7 @@ package typedefs is
         aluoctrl    : out std_logic_vector(2 downto 0);
         aludctrl    : out std_logic;
         regorig     : out std_logic_vector(3 downto 0);
-        regdest     : out std_logic_vector(3 downto 0);
-        instruction : out std_logic_vector(15 downto 0)
+        regdest     : out std_logic_vector(3 downto 0)
     );
     end component;
 

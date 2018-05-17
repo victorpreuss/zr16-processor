@@ -1,11 +1,11 @@
 ---------------------------------------------------------------------------
 -- Company     : Universidade Federal de Santa Catarina
 -- Author(s)   : Victor H B Preuss
--- 
+--
 -- Creation Date : 18/04/2018
 -- File          : mux2.vhd
 --
--- Abstract : 
+-- Abstract :
 --
 ---------------------------------------------------------------------------
 library ieee;
@@ -13,9 +13,9 @@ use ieee.std_logic_1164.ALL;
 use ieee.numeric_std.all;
 
 ---------------------------------------------------------------------------
-entity mux2 is 
+entity mux2 is
     generic (
-        LENGTH : integer
+        LENGTH : integer := 8
     );
     port (
         ctrl : in std_logic;
@@ -36,4 +36,3 @@ begin
                 (others => '0') when others;
 
 end architecture;
-
