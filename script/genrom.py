@@ -1,4 +1,6 @@
-vhdl = """---------------------------------------------------------------------------
+def generate_rom_vhdl(rom_data):
+
+    vhdl = """---------------------------------------------------------------------------
 -- Company     : Universidade Federal de Santa Catarina
 -- Author(s)   : Victor H B Preuss
 --
@@ -36,21 +38,17 @@ architecture arch of rom is
     constant rom_data : memory_t := (
 """
 
-f = open('../etc/code/bubblesort.zr16.stringhex', 'r')
-i = 0
+    i = 0
+    for line in rom_data:
+        half_word = line[0:4]
+        vhdl += "\t\t\t\tx\"" + half_word
+        if i == 1023:
+            vhdl += "\");\n"
+        else:
+            vhdl += "\",\n"
+        i += 1
 
-for line in f:
-    value = line[0:4]
-    vhdl += "\t\t\t\tx\"" + value
-
-    if i == 1023:
-        vhdl += "\");\n"
-    else:
-        vhdl += "\",\n"
-
-    i += 1
-
-vhdl += """
+    vhdl += """
 begin
 
     addri <= to_integer(unsigned(addr));
@@ -58,9 +56,7 @@ begin
 
 end architecture;"""
 
-f.close()
-
-# overwrite rom.vhd file with new binary
-f = open('../src/rom.vhd', 'w')
-f.write(vhdl)
-f.close()
+    # overwrite rom.vhd file with new binary
+    f = open('../src/rom.vhd', 'w')
+    f.write(vhdl)
+    f.close()
