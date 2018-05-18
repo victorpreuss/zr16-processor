@@ -63,7 +63,7 @@ begin
 
             when "0000" => -- ALU becomes a wire
 
-                resp := (others => '0');
+                resp := unsigned(in1);
 
                 w_Cout <= '0';
                 w_V_P  <= '0';
