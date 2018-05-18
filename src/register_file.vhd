@@ -16,19 +16,20 @@ use work.typedefs.all;
 ---------------------------------------------------------------------------
 entity register_file is
     port (
-        clk     : in std_logic;
-        rw      : in std_logic;                    -- read = '0' / write = '1'
-        addro   : in std_logic_vector(1 downto 0); -- bits 9:8 of instruction
-        pcctrl  : in std_logic_vector(2 downto 0);
-        in1     : in std_logic_vector(3 downto 0); -- origin register
-        in2     : in std_logic_vector(3 downto 0); -- destination register
-        alu     : in std_logic_vector(7 downto 0); -- alu data
-        flags   : in std_logic_vector(2 downto 0);
-        flctrl  : in std_logic_vector(2 downto 0); -- flag to overwrite register flags with alu
-        ro      : out std_logic_vector(7 downto 0);
-        rd      : out std_logic_vector(7 downto 0);
-        r15     : out std_logic_vector(7 downto 0);
-        pc      : out std_logic_vector(9 downto 0);
+        clk      : in std_logic;
+        rst_n    : in std_logic;
+        rw       : in std_logic;                    -- read = '0' / write = '1'
+        addro    : in std_logic_vector(1 downto 0); -- bits 9:8 of instruction
+        pcctrl   : in std_logic_vector(2 downto 0);
+        in1      : in std_logic_vector(3 downto 0); -- origin register
+        in2      : in std_logic_vector(3 downto 0); -- destination register
+        alu      : in std_logic_vector(7 downto 0); -- alu data
+        flags    : in std_logic_vector(2 downto 0);
+        flctrl   : in std_logic_vector(2 downto 0); -- flag to overwrite register flags with alu
+        ro       : out std_logic_vector(7 downto 0);
+        rd       : out std_logic_vector(7 downto 0);
+        r15      : out std_logic_vector(7 downto 0);
+        pc       : out std_logic_vector(9 downto 0);
         regdebug : out bytearray_t(15 downto 0)
     );
 end entity;
@@ -41,8 +42,6 @@ architecture arch of register_file is
     signal idx_o : integer := 0;
     signal idx_d : integer := 0;
 
-    signal pc_int : std_logic_vector(9 downto 0) := (others => '0');
-
 begin
 
     regdebug <= rf;
@@ -50,13 +49,17 @@ begin
     idx_o <= to_integer(unsigned(in1));
     idx_d <= to_integer(unsigned(in2));
 
-    reg_rw_ctrl : process (clk) is
+    reg_rw_ctrl : process (clk, rst_n) is
+        variable pc_int : std_logic_vector(9 downto 0) := (others => '0');
     begin
-        if rising_edge(clk) then
+        if (rst_n = '0') then
+            rf <= (others => (others => '0'));
+        elsif rising_edge(clk) then
+
             if (rw = '1') then -- write
                 rf(idx_d) <= alu;
             end if;
-            
+
             if (flctrl(2) = '1') then -- update Z flag
                 rf(15)(7) <= flags(2);
             end if;
@@ -68,29 +71,26 @@ begin
             if (flctrl(0) = '1') then -- update V_P flag
                 rf(15)(5) <= flags(0);
             end if;
-        end if;
-    end process;
 
-    pc_ctrl : process (clk) is
-    begin
-        if (rising_edge(clk)) then
             if (pcctrl = "001") then            -- increment pc
-                pc_int <= std_logic_vector(unsigned(pc_int) + 1);
+                pc_int := rf(14)(1 downto 0) & rf(13)(7 downto 0);
+                pc_int := std_logic_vector(unsigned(pc_int) + 1);
             elsif (pcctrl = "010") then         -- jmp par rd
-                pc_int <= addro & rf(idx_d);
+                pc_int := addro & rf(idx_d);
             elsif (pcctrl = "100") then         -- jmp par (rd)
-                pc_int <= addro & alu;
+                pc_int := addro & alu;
             elsif (pcctrl = "101") then         -- jmp end
-                pc_int <= addro & in2 & in1;
-            else
-                pc_int <= pc_int;
+                pc_int := addro & in2 & in1;
             end if;
+
+            rf(13)(7 downto 0) <= pc_int(7 downto 0);
+            rf(14)(1 downto 0) <= pc_int(9 downto 8);
         end if;
     end process;
 
     ro  <= rf(idx_o);
     rd  <= rf(idx_d);
     r15 <= rf(15);
-    pc  <= pc_int;
+    pc  <= rf(14)(1 downto 0) & rf(13)(7 downto 0);
 
 end architecture;

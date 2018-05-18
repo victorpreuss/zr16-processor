@@ -53,8 +53,8 @@ architecture arch of main is
     alias memaddr : std_logic_vector(7 downto 0) is instruction(7 downto 0);
 
     -- registers
-    signal regorig : std_logic_vector(3 downto 0);
-    signal regdest : std_logic_vector(3 downto 0);
+    signal regorig : std_logic_vector(3 downto 0) := (others => '0');
+    signal regdest : std_logic_vector(3 downto 0) := (others => '0');
 
     signal pc  : std_logic_vector(9 downto 0) := (others => '0');
     signal r13 : std_logic_vector(7 downto 0) := (others => '0');
@@ -156,6 +156,7 @@ begin
     registers_inst : register_file
     port map (
         clk     => clk,
+        rst_n   => rst_n,
         rw      => regrw,
         addro   => addrmodeo,
         pcctrl  => pcctrl,

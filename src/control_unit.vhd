@@ -158,19 +158,19 @@ begin
                         when SUB =>
                             w_aluctrl <= "0010";
                         when CMP =>
-                            w_aluctrl <= "0100";
+                            w_aluctrl <= "0010";
                         when JMP =>
                             w_aluctrl <= "0000";
                         when JZ => -- JNZ, JC and JVP have the same opcode
                             w_aluctrl <= "0000";
                         when INC => -- DEC has the same opcode
                             if (instruction(8) = '0') then
-                                w_aluctrl <= "1000"; -- INC
+                                w_aluctrl <= "0100"; -- INC
                             elsif (instruction(8) = '1') then
-                                w_aluctrl <= "1001"; -- DEC
+                                w_aluctrl <= "1000"; -- DEC
                             end if;
                         when DJNZ =>
-                            w_aluctrl <= "1001"; -- DEC
+                            w_aluctrl <= "1000"; -- DEC
                         when others =>
                             w_aluctrl <= "0000";
                     end case;

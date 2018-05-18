@@ -101,6 +101,7 @@ package typedefs is
     component register_file is
     port (
         clk     : in std_logic;
+        rst_n   : in std_logic;
         rw      : in std_logic;
         addro   : in std_logic_vector(1 downto 0);
         pcctrl  : in std_logic_vector(2 downto 0);

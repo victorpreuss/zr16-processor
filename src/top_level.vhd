@@ -74,6 +74,7 @@ architecture arch of top_level is
 
     -- control signals
     signal romctrl   : std_logic_vector(1 downto 0) := "00";
+    signal irctrl    : std_logic := '0';
     signal ramctrl   : std_logic_vector(1 downto 0) := "00";
     signal ramrw     : std_logic := '0';
     signal regrw     : std_logic := '0';
@@ -118,6 +119,15 @@ begin
         data => romdata
     );
 
+    instruction_register_inst : instruction_register
+    port map (
+        clk         => clksrc,
+        rst_n       => rst_n,
+        en          => irctrl,
+        romdata     => romdata,
+        instruction => instruction
+    );
+
     mux_rom_inst : mux4 generic map(ROM_ADDR)
     port map (
         ctrl     => romctrl,
@@ -133,6 +143,7 @@ begin
     registers_inst : register_file
     port map (
         clk     => clksrc,
+        rst_n   => rst_n,
         rw      => regrw,
         addro   => addrmodeo,
         pcctrl  => pcctrl,
@@ -188,9 +199,10 @@ begin
     port map (
         clk         => clksrc,
         rst_n       => rst_n,
-        romdata     => romdata,
+        instruction => instruction,
         aluflags    => r15(7 downto 5),
         romctrl     => romctrl,
+        irctrl      => irctrl,
         ramctrl     => ramctrl,
         ramrw       => ramrw,
         regrw       => regrw,
@@ -200,8 +212,7 @@ begin
         aluoctrl    => aluoctrl,
         aludctrl    => aludctrl,
         regorig     => regorig,
-        regdest     => regdest,
-        instruction => instruction
+        regdest     => regdest
     );
 
     mux_ram_inst : mux4 generic map(8)
