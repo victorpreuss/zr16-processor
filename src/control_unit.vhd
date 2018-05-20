@@ -11,7 +11,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use std.textio.all;
+use work.typedefs.all;
 
 ---------------------------------------------------------------------------
 entity control_unit is
@@ -27,7 +27,7 @@ entity control_unit is
         regrw       : out std_logic;
         pcctrl      : out std_logic_vector(2 downto 0);
         flagsctrl   : out std_logic_vector(2 downto 0);
-        aluctrl     : out std_logic_vector(3 downto 0);
+        aluctrl     : out aluop_t;
         aluoctrl    : out std_logic_vector(2 downto 0);
         aludctrl    : out std_logic;
         regorig     : out std_logic_vector(3 downto 0);
@@ -38,20 +38,25 @@ end entity;
 ---------------------------------------------------------------------------
 architecture arch of control_unit is
 
-    -- opcodes
+    -- jump instructions
     constant JMP  : std_logic_vector(3 downto 0) := "0000";
     constant JZ   : std_logic_vector(3 downto 0) := "0001";
     constant JNZ  : std_logic_vector(3 downto 0) := "0001"; -- same as JZ
     constant JC   : std_logic_vector(3 downto 0) := "0001"; -- same as JZ
     constant JVP  : std_logic_vector(3 downto 0) := "0001"; -- same as JZ
+    constant DJNZ : std_logic_vector(3 downto 0) := "1110";
+
+    -- data movement instructions
+    constant MOV  : std_logic_vector(3 downto 0) := "1101";
+    constant MVS  : std_logic_vector(3 downto 0) := "0011";
+
+    -- ALU instructions
     constant ADD  : std_logic_vector(3 downto 0) := "1000";
     constant SUB  : std_logic_vector(3 downto 0) := "1001";
     constant CMP  : std_logic_vector(3 downto 0) := "0111";
-    constant MOV  : std_logic_vector(3 downto 0) := "1101";
-    constant MVS  : std_logic_vector(3 downto 0) := "0011";
+
     constant INC  : std_logic_vector(3 downto 0) := "1111";
     constant DEC  : std_logic_vector(3 downto 0) := "1111";
-    constant DJNZ : std_logic_vector(3 downto 0) := "1110";
 
     constant ANDx : std_logic_vector(3 downto 0) := "0100";
     constant ORx  : std_logic_vector(3 downto 0) := "0101";
@@ -61,13 +66,13 @@ architecture arch of control_unit is
     constant SHL : std_logic_vector(3 downto 0) := "1011";
     constant SHA : std_logic_vector(3 downto 0) := "1100";
 
-
     -- addressing modes
     constant REG       : std_logic_vector(1 downto 0) := "00";
     constant REG_ADDR  : std_logic_vector(1 downto 0) := "01";
     constant ADDR      : std_logic_vector(1 downto 0) := "10";
     constant IMMEDIATE : std_logic_vector(1 downto 0) := "11";
 
+    -- register names
     constant REG0      : std_logic_vector(3 downto 0) := "0000";
     constant REG1      : std_logic_vector(3 downto 0) := "0001";
     constant REG2      : std_logic_vector(3 downto 0) := "0010";
@@ -75,7 +80,7 @@ architecture arch of control_unit is
     constant REG4      : std_logic_vector(3 downto 0) := "0100";
 
     -- control unit state machine
-    type state_t is (RESET, FETCH, CONTROL_1, CONTROL_2, CONTROL_3, HALT);
+    type state_t is (RESET, CONTROL_1, CONTROL_2, CONTROL_3, HALT);
     signal state : state_t := RESET;
     signal next_state : state_t := RESET;
 
@@ -87,7 +92,7 @@ architecture arch of control_unit is
     signal w_regrw     : std_logic := '0'; -- registers R/W flag
     signal w_pcctrl    : std_logic_vector(2 downto 0) := "000";
     signal w_flagsctrl : std_logic_vector(2 downto 0) := "000";
-    signal w_aluctrl   : std_logic_vector(3 downto 0) := (others => '0');
+    signal w_aluctrl   : aluop_t := ALU_WIRE;
     signal w_aluoctrl  : std_logic_vector(2 downto 0) := (others => '0');
     signal w_aludctrl  : std_logic := '0';
 
@@ -131,7 +136,6 @@ begin
 
     -- transition of state machine is synchronous
     sm_sequential : process (clk, rst_n) is
-        variable L : line;
     begin
         if (rst_n = '0') then
             state <= RESET;
@@ -143,41 +147,54 @@ begin
                     w_flagsctrl <= "000";
                     w_pcctrl <= "001";
                     w_irctrl <= '1';
+
                     state  <= CONTROL_1;
-
                 when CONTROL_1 =>
-
                     -- set ALU control
                     case (opcode) is
-                        when MOV =>
-                            w_aluctrl <= "0000";
-                        when MVS =>
-                            w_aluctrl <= "0000";
-                        when ADD =>
-                            w_aluctrl <= "0001";
-                        when SUB =>
-                            w_aluctrl <= "0010";
-                        when CMP =>
-                            w_aluctrl <= "0010";
                         when JMP =>
-                            w_aluctrl <= "0000";
+                            w_aluctrl <= ALU_WIRE;
                         when JZ => -- JNZ, JC and JVP have the same opcode
-                            w_aluctrl <= "0000";
+                            w_aluctrl <= ALU_WIRE;
+                        when DJNZ =>
+                            w_aluctrl <= ALU_DEC;
+                        when MOV =>
+                            w_aluctrl <= ALU_WIRE;
+                        when MVS =>
+                            w_aluctrl <= ALU_WIRE;
+                        when ADD =>
+                            w_aluctrl <= ALU_ADD;
+                        when SUB =>
+                            w_aluctrl <= ALU_SUB;
+                        when CMP =>
+                            w_aluctrl <= ALU_SUB;
                         when INC => -- DEC has the same opcode
                             if (instruction(8) = '0') then
-                                w_aluctrl <= "0100"; -- INC
+                                w_aluctrl <= ALU_INC; -- INC
                             elsif (instruction(8) = '1') then
-                                w_aluctrl <= "1000"; -- DEC
+                                w_aluctrl <= ALU_DEC; -- DEC
                             end if;
-                        when DJNZ =>
-                            w_aluctrl <= "1000"; -- DEC
+                        when ANDx =>
+                            w_aluctrl <= ALU_AND;
+                        when ORx =>
+                            w_aluctrl <= ALU_OR;
+                        when XORx =>
+                            w_aluctrl <= ALU_XOR;
+                        when ROT =>
+                            w_aluctrl <= ALU_ROT;
+                        when SHL =>
+                            w_aluctrl <= ALU_SHL;
+                        when SHA =>
+                            w_aluctrl <= ALU_SHA;
                         when others =>
-                            w_aluctrl <= "0000";
+                            w_aluctrl <= ALU_WIRE;
                     end case;
 
                     -- addressing modes
-                    if (opcode = MOV or opcode = ADD or opcode = SUB or
-                        opcode = CMP) then
+                    if (opcode = MOV  or opcode = ADD  or opcode = SUB or
+                        opcode = CMP  or opcode = ANDx or opcode = ORx or
+                        opcode = XORx or opcode = ROT  or opcode = SHL or
+                        opcode = SHA) then
                         if (addrmodeo = REG and addrmoded = REG) then
                             -- alu inputs
                             w_aluoctrl <= "100"; -- ro
@@ -197,11 +214,11 @@ begin
                             -- set alu flags according to the instruction
                             if (opcode = MOV) then
                                 w_flagsctrl <= "100";
-                            elsif (opcode = ADD or opcode = SUB or opcode = CMP) then
+                            elsif (opcode = ADD or opcode = SUB or opcode = CMP or opcode = SHA) then
                                 w_flagsctrl <= "111";
                             elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
                                 w_flagsctrl <= "110";
-                            elsif (opcode = ROT or opcode = SHL or opcode = SHA) then
+                            elsif (opcode = ROT or opcode = SHL) then
                                 w_flagsctrl <= "101";
                             end if;
 
@@ -278,11 +295,11 @@ begin
                             -- set alu flags according to the instruction
                             if (opcode = MOV) then
                                 w_flagsctrl <= "100";
-                            elsif (opcode = ADD or opcode = SUB or opcode = CMP) then
+                            elsif (opcode = ADD or opcode = SUB or opcode = CMP or opcode = SHA) then
                                 w_flagsctrl <= "111";
                             elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
                                 w_flagsctrl <= "110";
-                            elsif (opcode = ROT or opcode = SHL or opcode = SHA) then
+                            elsif (opcode = ROT or opcode = SHL) then
                                 w_flagsctrl <= "101";
                             end if;
 
@@ -310,11 +327,11 @@ begin
                             -- set alu flags according to the instruction
                             if (opcode = MOV) then
                                 w_flagsctrl <= "100";
-                            elsif (opcode = ADD or opcode = SUB or opcode = CMP) then
+                            elsif (opcode = ADD or opcode = SUB or opcode = CMP or opcode = SHA) then
                                 w_flagsctrl <= "111";
                             elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
                                 w_flagsctrl <= "110";
-                            elsif (opcode = ROT or opcode = SHL or opcode = SHA) then
+                            elsif (opcode = ROT or opcode = SHL) then
                                 w_flagsctrl <= "101";
                             end if;
 
@@ -346,11 +363,11 @@ begin
                             -- set alu flags according to the instruction
                             if (opcode = MOV) then
                                 w_flagsctrl <= "100";
-                            elsif (opcode = ADD or opcode = SUB or opcode = CMP) then
+                            elsif (opcode = ADD or opcode = SUB or opcode = CMP or opcode = SHA) then
                                 w_flagsctrl <= "111";
                             elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
                                 w_flagsctrl <= "110";
-                            elsif (opcode = ROT or opcode = SHL or opcode = SHA) then
+                            elsif (opcode = ROT or opcode = SHL) then
                                 w_flagsctrl <= "101";
                             end if;
 
@@ -387,7 +404,7 @@ begin
 
                         state <= CONTROL_1;
                     elsif (opcode = JMP) then
-                        if (addrmoded = "10") then
+                        if (addrmoded = ADDR) then
                             w_aluoctrl <= "000";
 
                             w_regorig <= orig;
@@ -478,8 +495,10 @@ begin
 
                 when CONTROL_2 =>
 
-                    if (opcode = MOV or opcode = ADD or opcode = SUB or
-                        opcode = CMP) then
+                    if (opcode = MOV  or opcode = ADD  or opcode = SUB or
+                        opcode = CMP  or opcode = ANDx or opcode = ORx or
+                        opcode = XORx or opcode = ROT  or opcode = SHL or
+                        opcode = SHA) then
                         if (addrmodeo = REG_ADDR and addrmoded = REG) then
                             -- CMP does not write to destination
                             if (opcode = CMP) then
@@ -491,11 +510,11 @@ begin
                             -- set alu flags according to the instruction
                             if (opcode = MOV) then
                                 w_flagsctrl <= "100";
-                            elsif (opcode = ADD or opcode = SUB or opcode = CMP) then
+                            elsif (opcode = ADD or opcode = SUB or opcode = CMP or opcode = SHA) then
                                 w_flagsctrl <= "111";
                             elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
                                 w_flagsctrl <= "110";
-                            elsif (opcode = ROT or opcode = SHL or opcode = SHA) then
+                            elsif (opcode = ROT or opcode = SHL) then
                                 w_flagsctrl <= "101";
                             end if;
 
@@ -518,11 +537,11 @@ begin
                             -- set alu flags according to the instruction
                             if (opcode = MOV) then
                                 w_flagsctrl <= "100";
-                            elsif (opcode = ADD or opcode = SUB or opcode = CMP) then
+                            elsif (opcode = ADD or opcode = SUB or opcode = CMP or opcode = SHA) then
                                 w_flagsctrl <= "111";
                             elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
                                 w_flagsctrl <= "110";
-                            elsif (opcode = ROT or opcode = SHL or opcode = SHA) then
+                            elsif (opcode = ROT or opcode = SHL) then
                                 w_flagsctrl <= "101";
                             end if;
 
@@ -560,11 +579,7 @@ begin
 
                         state <= CONTROL_1;
                     elsif (opcode = INC) then -- DEC has the same opcode
-                        if (addrmoded = REG) then
-
-                        elsif (addrmoded = REG_ADDR) then
-
-                        elsif (addrmoded = ADDR) then
+                        if (addrmoded = ADDR) then
                             w_aluoctrl <= "000";
                             w_aludctrl <= '0';
 
@@ -605,7 +620,6 @@ begin
                     end if;
 
                 when CONTROL_3 =>
-
                     if (opcode = DJNZ) then
                         w_aluoctrl <= "000";
 

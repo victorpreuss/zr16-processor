@@ -28,6 +28,8 @@ entity register_file is
         flctrl   : in std_logic_vector(2 downto 0); -- flag to overwrite register flags with alu
         ro       : out std_logic_vector(7 downto 0);
         rd       : out std_logic_vector(7 downto 0);
+        r13      : out std_logic_vector(7 downto 0);
+        r14      : out std_logic_vector(7 downto 0);
         r15      : out std_logic_vector(7 downto 0);
         pc       : out std_logic_vector(9 downto 0);
         regdebug : out bytearray_t(15 downto 0)
@@ -90,6 +92,8 @@ begin
 
     ro  <= rf(idx_o);
     rd  <= rf(idx_d);
+    r13 <= rf(13);
+    r14 <= rf(14);
     r15 <= rf(15);
     pc  <= rf(14)(1 downto 0) & rf(13)(7 downto 0);
 

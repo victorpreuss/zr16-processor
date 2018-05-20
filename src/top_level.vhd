@@ -80,7 +80,7 @@ architecture arch of top_level is
     signal regrw     : std_logic := '0';
     signal pcctrl    : std_logic_vector(2 downto 0) := "000";
     signal flagsctrl : std_logic_vector(2 downto 0) := "000";
-    signal aluctrl   : std_logic_vector(3 downto 0) := (others => '0');
+    signal aluctrl   : aluop_t := ALU_WIRE;
     signal aluoctrl  : std_logic_vector(2 downto 0) := (others => '0');
     signal aludctrl  : std_logic := '0';
 
@@ -154,6 +154,8 @@ begin
         flctrl  => flagsctrl,
         ro      => ro,
         rd      => rd,
+        r13     => r13,
+        r14     => r14,
         r15     => r15,
         pc      => pc,
         regdebug => regdebug

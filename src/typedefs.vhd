@@ -18,6 +18,9 @@ package typedefs is
     subtype byte_t is std_logic_vector(7 downto 0);
     type bytearray_t is array(natural range <>) of byte_t;
 
+    type aluop_t is (ALU_WIRE, ALU_ADD, ALU_SUB, ALU_INC, ALU_DEC,
+                     ALU_AND, ALU_OR, ALU_XOR, ALU_ROT, ALU_SHL, ALU_SHA);
+
     component rom is
     generic (
         DATA_SIZE : integer;
@@ -100,27 +103,29 @@ package typedefs is
 
     component register_file is
     port (
-        clk     : in std_logic;
-        rst_n   : in std_logic;
-        rw      : in std_logic;
-        addro   : in std_logic_vector(1 downto 0);
-        pcctrl  : in std_logic_vector(2 downto 0);
-        in1     : in std_logic_vector(3 downto 0);
-        in2     : in std_logic_vector(3 downto 0);
-        alu     : in std_logic_vector(7 downto 0);
-        flags   : in std_logic_vector(2 downto 0);
-        flctrl  : in std_logic_vector(2 downto 0);
-        ro      : out std_logic_vector(7 downto 0);
-        rd      : out std_logic_vector(7 downto 0);
-        r15     : out std_logic_vector(7 downto 0);
-        pc      : out std_logic_vector(9 downto 0);
+        clk      : in std_logic;
+        rst_n    : in std_logic;
+        rw       : in std_logic;
+        addro    : in std_logic_vector(1 downto 0);
+        pcctrl   : in std_logic_vector(2 downto 0);
+        in1      : in std_logic_vector(3 downto 0);
+        in2      : in std_logic_vector(3 downto 0);
+        alu      : in std_logic_vector(7 downto 0);
+        flags    : in std_logic_vector(2 downto 0);
+        flctrl   : in std_logic_vector(2 downto 0);
+        ro       : out std_logic_vector(7 downto 0);
+        rd       : out std_logic_vector(7 downto 0);
+        r13      : out std_logic_vector(7 downto 0);
+        r14      : out std_logic_vector(7 downto 0);
+        r15      : out std_logic_vector(7 downto 0);
+        pc       : out std_logic_vector(9 downto 0);
         regdebug : out bytearray_t(15 downto 0)
     );
     end component;
 
     component alu is
     port (
-        op      : in std_logic_vector(3 downto 0);
+        op      : in aluop_t;
         Cin     : in std_logic;
         uc      : in std_logic;
         ed      : in std_logic;
@@ -146,7 +151,7 @@ package typedefs is
         regrw       : out std_logic;
         pcctrl      : out std_logic_vector(2 downto 0);
         flagsctrl   : out std_logic_vector(2 downto 0);
-        aluctrl     : out std_logic_vector(3 downto 0);
+        aluctrl     : out aluop_t;
         aluoctrl    : out std_logic_vector(2 downto 0);
         aludctrl    : out std_logic;
         regorig     : out std_logic_vector(3 downto 0);
