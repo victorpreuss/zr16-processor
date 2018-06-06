@@ -351,11 +351,13 @@ begin
 
                             state <= CONTROL_1;
                         elsif (addrmodeo = REG and addrmoded = ADDR) then
-                            w_aluoctrl <= "100";
-                            w_aludctrl <= '0';
+                            -- alu inputs
+                            w_aluoctrl <= "100"; -- ro
+                            w_aludctrl <= '0';   -- ram
 
-                            w_regorig <= REG0;
-                            w_regdest <= dest;
+                            -- register file in/out
+                            w_regorig <= REG0; -- r0
+                            w_regdest <= dest; -- rd
 
                             -- keep registers in read mode to avoid overwrite
                             w_regrw <= '0';
@@ -387,6 +389,8 @@ begin
 
                             state <= CONTROL_1;
                         end if;
+                        -- TODO: missing implementation of addressing mode
+                        -- rd = REG_ADDR, ro = IMMEDIATE
                     elsif (opcode = MVS) then
                         w_aluoctrl <= "000";
                         w_aludctrl <= '1';
@@ -404,16 +408,20 @@ begin
 
                         state <= CONTROL_1;
                     elsif (opcode = JMP) then
-                        if (addrmoded = ADDR) then
-                            w_aluoctrl <= "000";
+                        if (addrmoded = "10" or addrmoded = "11") then
+                            w_aluoctrl <= "000"; -- immed
+                            w_aludctrl <= '0';   -- not important
 
-                            w_regorig <= orig;
-                            w_regdest <= dest;
+                            w_regorig <= orig; -- ro
+                            w_regdest <= dest; -- rd
 
+                            -- not important (make sure nothing is overwritten)
                             w_ramrw <= '0';
                             w_regrw <= '0';
                             w_flagsctrl <= "000";
+                            w_ramctrl <= "00";
 
+                            -- move (end) to pc register
                             w_pcctrl <= "101";
                             w_irctrl <= '0';
 
@@ -424,7 +432,8 @@ begin
                             (addrmoded = "01" and Z = '0') or -- JNZ
                             (addrmoded = "10" and C = '1') or -- JC
                             (addrmoded = "11" and V_P = '1')) then -- JVP
-                            w_aluoctrl <= "000";
+                            w_aluoctrl <= "000"; -- immed
+                            w_aludctrl <= '0';   -- not important
 
                             w_regorig <= orig;
                             w_regdest <= dest;
@@ -432,15 +441,25 @@ begin
                             w_ramrw <= '0';
                             w_regrw <= '0';
                             w_flagsctrl <= "000";
+                            w_ramctrl <= "00";
 
                             w_pcctrl <= "101";
                             w_irctrl <= '0';
 
                             state <= CONTROL_2;
                         else
+                            w_aluoctrl <= "000";
+                            w_aludctrl <= '0'; -- not important
+
+                            -- not important
+                            w_regorig <= orig;
+                            w_regdest <= dest;
+
+                            -- not important (make sure nothing is overwritten)
                             w_ramrw <= '0';
                             w_regrw <= '0';
                             w_flagsctrl <= "000";
+                            w_ramctrl <= "00";
 
                             w_pcctrl <= "001";
                             w_irctrl <= '1';
@@ -465,6 +484,7 @@ begin
 
                             state <= CONTROL_2;
                         end if;
+                        -- TODO: missing some addressing modes (not urgent)
                     elsif (opcode = DJNZ) then
                         w_aluoctrl <= "000";
                         w_aludctrl <= '1';
@@ -555,25 +575,13 @@ begin
                             state <= CONTROL_1;
                         end if;
                     elsif (opcode = JMP) then
-                        if (addrmoded = "10") then
-                            w_aluoctrl <= "000";
-
-                            w_ramrw <= '0';
-                            w_regrw <= '0';
-                            w_flagsctrl <= "000";
-
+                        if (addrmoded = "10" or addrmoded = "11") then
                             w_pcctrl <= "001";
                             w_irctrl <= '1';
 
                             state <= CONTROL_1;
                         end if;
                     elsif (opcode = JZ) then -- JNZ, JC and JVP have the same opcode
-                        w_aluoctrl <= "000";
-
-                        w_ramrw <= '0';
-                        w_regrw <= '0';
-                        w_flagsctrl <= "000";
-
                         w_pcctrl <= "001";
                         w_irctrl <= '1';
 
@@ -583,13 +591,9 @@ begin
                             w_aluoctrl <= "000";
                             w_aludctrl <= '0';
 
-                            w_regorig <= orig;
-                            w_regdest <= dest;
-
                             w_ramrw <= '1';
-                            w_regrw <= '0';
-                            w_flagsctrl <= "100";
                             w_ramctrl <= "00";
+                            w_flagsctrl <= "100";
 
                             w_pcctrl <= "001";
                             w_irctrl <= '1';

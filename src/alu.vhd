@@ -126,21 +126,24 @@ begin
                 resp := unsigned(in1) and unsigned(in2);
 
                 w_Cout <= '0';
-                w_V_P  <= parity;
+                w_V_P  <= not (resp(0) xor resp(1) xor resp(2) xor resp(3) xor
+                               resp(4) xor resp(5) xor resp(6) xor resp(7));
 
             when ALU_OR =>
 
                 resp := unsigned(in1) or unsigned(in2);
 
                 w_Cout <= '0';
-                w_V_P  <= parity;
+                w_V_P  <= not (resp(0) xor resp(1) xor resp(2) xor resp(3) xor
+                               resp(4) xor resp(5) xor resp(6) xor resp(7));
 
             when ALU_XOR =>
 
                 resp := unsigned(in1) xor unsigned(in2);
 
                 w_Cout <= '0';
-                w_V_P  <= parity;
+                w_V_P  <= not (resp(0) xor resp(1) xor resp(2) xor resp(3) xor
+                               resp(4) xor resp(5) xor resp(6) xor resp(7));
 
             when ALU_ROT =>
 
@@ -190,9 +193,6 @@ begin
                 w_V_P   <= '0';
 
         end case;
-
-        parity := resp(0) xor resp(1) xor resp(2) xor resp(3) xor
-                  resp(4) xor resp(5) xor resp(6) xor resp(7);
 
         if (resp(7 downto 0) = "00000000") then
             w_Z <= '1';
