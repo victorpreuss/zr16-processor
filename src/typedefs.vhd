@@ -107,7 +107,7 @@ package typedefs is
         rst_n    : in std_logic;
         rw       : in std_logic;
         addro    : in std_logic_vector(1 downto 0);
-        pcctrl   : in std_logic_vector(2 downto 0);
+        pcctrl   : in std_logic_vector(1 downto 0);
         in1      : in std_logic_vector(3 downto 0);
         in2      : in std_logic_vector(3 downto 0);
         alu      : in std_logic_vector(7 downto 0);
@@ -149,8 +149,10 @@ package typedefs is
         ramctrl     : out std_logic_vector(1 downto 0);
         ramrw       : out std_logic;
         regrw       : out std_logic;
-        pcctrl      : out std_logic_vector(2 downto 0);
+        stackctrl   : out std_logic_vector(1 downto 0);
+        pcctrl      : out std_logic_vector(1 downto 0);
         flagsctrl   : out std_logic_vector(2 downto 0);
+        latchctrl   : out std_logic;
         aluctrl     : out aluop_t;
         aluoctrl    : out std_logic_vector(2 downto 0);
         aludctrl    : out std_logic;

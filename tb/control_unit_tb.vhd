@@ -38,8 +38,10 @@ architecture arch of control_unit_tb is
     signal ramctrl   : std_logic_vector(1 downto 0) := "00";
     signal ramrw     : std_logic := '0';
     signal regrw     : std_logic := '0';
-    signal pcctrl    : std_logic_vector(2 downto 0) := "000";
+    signal pcctrl    : std_logic_vector(1 downto 0) := "00";
     signal flagsctrl : std_logic_vector(2 downto 0) := "000";
+    signal stackctrl : std_logic_vector(1 downto 0) := "00";
+    signal latchctrl : std_logic := '0';
     signal aluctrl   : aluop_t := ALU_WIRE;
     signal aluoctrl  : std_logic_vector(2 downto 0) := (others => '0');
     signal aludctrl  : std_logic := '0';
@@ -65,8 +67,10 @@ begin
         ramctrl     => ramctrl,
         ramrw       => ramrw,
         regrw       => regrw,
+        stackctrl   => stackctrl,
         pcctrl      => pcctrl,
         flagsctrl   => flagsctrl,
+        latchctrl   => latchctrl,
         aluctrl     => aluctrl,
         aluoctrl    => aluoctrl,
         aludctrl    => aludctrl,
@@ -80,7 +84,7 @@ begin
         rst_n <= '0';
         wait for 5 ns;
         rst_n <= '1';
-        wait for 15 ns; -- 20 ns
+        wait for 10 ns; -- 20 ns
 
         -- MOV rd, ro with rd = 0101 and ro = 1010
         instruction <= "1101000001011010";
@@ -91,7 +95,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('1'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("100"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("100"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -108,7 +112,7 @@ begin
         assert ("01"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("000"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("00"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("011"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -122,7 +126,7 @@ begin
         assert ("01"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('1'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("100"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("011"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -139,7 +143,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("000"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("00"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("011"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -153,7 +157,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('1'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("100"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("011"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -170,7 +174,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('1'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("100"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -187,7 +191,7 @@ begin
         assert ("10"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('1'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("100"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("100"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -204,7 +208,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('1'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("100"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("100"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -221,7 +225,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('1'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("100"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -238,7 +242,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("101"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("11"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -252,7 +256,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -270,7 +274,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -288,7 +292,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("101"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("11"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -302,7 +306,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -320,7 +324,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -338,7 +342,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("101"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("11"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -352,7 +356,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -370,7 +374,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -388,7 +392,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("101"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("11"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -402,7 +406,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -420,7 +424,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -438,7 +442,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("101"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("11"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -452,7 +456,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_WIRE = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -469,7 +473,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("000"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("00"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_INC  = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -483,7 +487,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('1'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("100"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_INC  = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -500,7 +504,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('0'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("000"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("00"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("000"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_DEC  = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;
@@ -514,7 +518,7 @@ begin
         assert ("00"     = ramctrl)   report "ramctrl is wrong!" severity error;
         assert ('1'      = ramrw)     report "ramrw is wrong!" severity error;
         assert ('0'      = regrw)     report "regrw is wrong!" severity error;
-        assert ("001"    = pcctrl)    report "pcctrl is wrong!" severity error;
+        assert ("01"     = pcctrl)    report "pcctrl is wrong!" severity error;
         assert ("100"    = flagsctrl) report "flagsctrl is wrong!" severity error;
         assert (ALU_DEC  = aluctrl)   report "aluctrl is wrong!" severity error;
         assert ("000"    = aluoctrl)  report "aluoctrl is wrong!" severity error;

@@ -25,8 +25,10 @@ entity control_unit is
         ramctrl     : out std_logic_vector(1 downto 0);
         ramrw       : out std_logic;
         regrw       : out std_logic;
-        pcctrl      : out std_logic_vector(2 downto 0);
+        stackctrl   : out std_logic_vector(1 downto 0);
+        pcctrl      : out std_logic_vector(1 downto 0);
         flagsctrl   : out std_logic_vector(2 downto 0);
+        latchctrl   : out std_logic;
         aluctrl     : out aluop_t;
         aluoctrl    : out std_logic_vector(2 downto 0);
         aludctrl    : out std_logic;
@@ -68,7 +70,7 @@ architecture arch of control_unit is
 
     -- addressing modes
     constant REG       : std_logic_vector(1 downto 0) := "00";
-    constant REG_ADDR  : std_logic_vector(1 downto 0) := "01";
+    constant REGADDR   : std_logic_vector(1 downto 0) := "01";
     constant ADDR      : std_logic_vector(1 downto 0) := "10";
     constant IMMEDIATE : std_logic_vector(1 downto 0) := "11";
 
@@ -79,568 +81,642 @@ architecture arch of control_unit is
     constant REG3      : std_logic_vector(3 downto 0) := "0011";
     constant REG4      : std_logic_vector(3 downto 0) := "0100";
 
-    -- control unit state machine
-    type state_t is (RESET, CONTROL_1, CONTROL_2, CONTROL_3, HALT);
-    signal state : state_t := RESET;
-    signal next_state : state_t := RESET;
-
     -- control signals
-    signal w_romctrl   : std_logic_vector(1 downto 0) := "00";
-    signal w_irctrl    : std_logic := '0'; -- instruction register
-    signal w_ramctrl   : std_logic_vector(1 downto 0) := "00";
-    signal w_ramrw     : std_logic := '0'; -- RAM R/W flag
-    signal w_regrw     : std_logic := '0'; -- registers R/W flag
-    signal w_pcctrl    : std_logic_vector(2 downto 0) := "000";
-    signal w_flagsctrl : std_logic_vector(2 downto 0) := "000";
-    signal w_aluctrl   : aluop_t := ALU_WIRE;
-    signal w_aluoctrl  : std_logic_vector(2 downto 0) := (others => '0');
-    signal w_aludctrl  : std_logic := '0';
-
-    signal w_regorig : std_logic_vector(3 downto 0) := (others => '0');
-    signal w_regdest : std_logic_vector(3 downto 0) := (others => '0');
+    signal romctrl_d   : std_logic_vector(1 downto 0) := "00";
+    signal irctrl_d    : std_logic := '0';
+    signal ramctrl_d   : std_logic_vector(1 downto 0) := "00";
+    signal ramrw_d     : std_logic := '0';
+    signal regrw_d     : std_logic := '0';
+    signal stackctrl_d : std_logic_vector(1 downto 0) := "00";
+    signal pcctrl_d    : std_logic_vector(1 downto 0) := "00";
+    signal flagsctrl_d : std_logic_vector(2 downto 0) := "000";
+    signal latchctrl_d : std_logic := '0';
+    signal aluctrl_d   : aluop_t := ALU_WIRE;
+    signal aluoctrl_d  : std_logic_vector(2 downto 0) := (others => '0');
+    signal aludctrl_d  : std_logic := '0';
+    signal regorig_d   : std_logic_vector(3 downto 0) := (others => '0');
+    signal regdest_d   : std_logic_vector(3 downto 0) := (others => '0');
 
     -- instruction decode
-    alias opcode      : std_logic_vector(3 downto 0) is instruction(15 downto 12); -- opcode
-
-    alias addrmoded   : std_logic_vector(1 downto 0) is instruction(11 downto 10); -- addrmode of dest
-    alias addrmodeo   : std_logic_vector(1 downto 0) is instruction(9 downto 8);   -- addrmode of orig
-
-    alias dest    : std_logic_vector(3 downto 0) is instruction(7 downto 4);   -- destination
-    alias orig    : std_logic_vector(3 downto 0) is instruction(3 downto 0);   -- origin
-
-    alias immed   : std_logic_vector(7 downto 0) is instruction(7 downto 0);
-    alias memaddr : std_logic_vector(7 downto 0) is instruction(7 downto 0);
-
-    alias mvsdest : std_logic_vector(3 downto 0) is instruction(11 downto 8);
+    alias opcode    : std_logic_vector(3 downto 0) is instruction(15 downto 12);
+    alias addrmoded : std_logic_vector(1 downto 0) is instruction(11 downto 10);
+    alias addrmodeo : std_logic_vector(1 downto 0) is instruction(9 downto 8);
+    alias dest      : std_logic_vector(3 downto 0) is instruction(7 downto 4);
+    alias orig      : std_logic_vector(3 downto 0) is instruction(3 downto 0);
+    alias immed     : std_logic_vector(7 downto 0) is instruction(7 downto 0);
+    alias memaddr   : std_logic_vector(7 downto 0) is instruction(7 downto 0);
+    alias mvsdest   : std_logic_vector(3 downto 0) is instruction(11 downto 8);
 
     -- alu flags
-    alias Z     : std_logic is aluflags(2);
-    alias C     : std_logic is aluflags(1);
-    alias V_P   : std_logic is aluflags(0);
+    alias Z   : std_logic is aluflags(2);
+    alias C   : std_logic is aluflags(1);
+    alias V_P : std_logic is aluflags(0);
+
+    -- control unit state machine
+    type state_t is (HALT,
+                     CLK1_MOV_REG_REG,
+                     CLK1_MOV_REGADDR_REG, CLK2_MOV_REGADDR_REG,
+                     CLK1_MOV_ADDR_REG, CLK2_MOV_ADDR_REG,
+                     CLK1_MOV_IMMED_REG,
+                     CLK1_MOV_REG_REGADDR,
+                     CLK1_MOV_REGADDR_REGADDR, CLK2_MOV_REGADDR_REGADDR,
+                     CLK1_MOV_ADDR_REGADDR, CLK2_MOV_ADDR_REGADDR,
+                     CLK1_MOV_IMMED_REGADDR,
+                     CLK1_MOV_REG_ADDR,
+                     CLK1_MOV_REGADDR_ADDR, CLK2_MOV_REGADDR_ADDR,
+                     CLK1_ADD_REGADDR_REGADDR, CLK2_ADD_REGADDR_REGADDR, CLK3_ADD_REGADDR_REGADDR,
+                     CLK1_ADD_ADDR_REGADDR, CLK2_ADD_ADDR_REGADDR, CLK3_ADD_ADDR_REGADDR,
+                     CLK1_ADD_REG_REGADDR,
+                     CLK1_ADD_IMMED_REGADDR,
+                     CLK1_ADD_REG_ADDR,
+                     CLK1_ADD_REGADDR_ADDR, CLK2_ADD_REGADDR_ADDR, CLK3_ADD_REGADDR_ADDR,
+                     JMP_ADDR, JMP_REG, JMP_REGADDR_1, JMP_REGADDR_2, JMP_END,
+                     INC_ADDR_1, INC_ADDR_2
+                    );
+
+    signal state_d : state_t := HALT;
+    signal state_q : state_t := HALT;
+
+    signal rw_aux        : std_logic := '0';
+    signal flagsctrl_aux : std_logic_vector(2 downto 0) := "000";
 
 begin
 
-    romctrl   <= w_romctrl;
-    irctrl    <= w_irctrl;
-    ramctrl   <= w_ramctrl;
-    ramrw     <= w_ramrw;
-    regrw     <= w_regrw;
-    pcctrl    <= w_pcctrl;
-    flagsctrl <= w_flagsctrl;
-    aluctrl   <= w_aluctrl;
-    aluoctrl  <= w_aluoctrl;
-    aludctrl  <= w_aludctrl;
-
-    regorig <= w_regorig;
-    regdest <= w_regdest;
-
-    -- transition of state machine is synchronous
     sm_sequential : process (clk, rst_n) is
     begin
         if (rst_n = '0') then
-            state <= RESET;
+            state_q <= HALT;
         elsif (falling_edge(clk)) then
-            case (state) is
-                when RESET =>
-                    w_ramrw <= '0';
-                    w_regrw <= '0';
-                    w_flagsctrl <= "000";
-                    w_pcctrl <= "001";
-                    w_irctrl <= '1';
-
-                    state  <= CONTROL_1;
-                when CONTROL_1 =>
-                    -- set ALU control
-                    case (opcode) is
-                        when JMP =>
-                            w_aluctrl <= ALU_WIRE;
-                        when JZ => -- JNZ, JC and JVP have the same opcode
-                            w_aluctrl <= ALU_WIRE;
-                        when DJNZ =>
-                            w_aluctrl <= ALU_DEC;
-                        when MOV =>
-                            w_aluctrl <= ALU_WIRE;
-                        when MVS =>
-                            w_aluctrl <= ALU_WIRE;
-                        when ADD =>
-                            w_aluctrl <= ALU_ADD;
-                        when SUB =>
-                            w_aluctrl <= ALU_SUB;
-                        when CMP =>
-                            w_aluctrl <= ALU_SUB;
-                        when INC => -- DEC has the same opcode
-                            if (instruction(8) = '0') then
-                                w_aluctrl <= ALU_INC; -- INC
-                            elsif (instruction(8) = '1') then
-                                w_aluctrl <= ALU_DEC; -- DEC
-                            end if;
-                        when ANDx =>
-                            w_aluctrl <= ALU_AND;
-                        when ORx =>
-                            w_aluctrl <= ALU_OR;
-                        when XORx =>
-                            w_aluctrl <= ALU_XOR;
-                        when ROT =>
-                            w_aluctrl <= ALU_ROT;
-                        when SHL =>
-                            w_aluctrl <= ALU_SHL;
-                        when SHA =>
-                            w_aluctrl <= ALU_SHA;
-                        when others =>
-                            w_aluctrl <= ALU_WIRE;
-                    end case;
-
-                    -- addressing modes
-                    if (opcode = MOV  or opcode = ADD  or opcode = SUB or
-                        opcode = CMP  or opcode = ANDx or opcode = ORx or
-                        opcode = XORx or opcode = ROT  or opcode = SHL or
-                        opcode = SHA) then
-                        if (addrmodeo = REG and addrmoded = REG) then
-                            -- alu inputs
-                            w_aluoctrl <= "100"; -- ro
-                            w_aludctrl <= '1';   -- rd
-
-                            -- register file in/out
-                            w_regorig <= orig;   -- ro
-                            w_regdest <= dest;   -- rd
-
-                            -- CMP does not write to destination
-                            if (opcode = CMP) then
-                                w_regrw <= '0';
-                            else
-                                w_regrw <= '1';
-                            end if;
-
-                            -- set alu flags according to the instruction
-                            if (opcode = MOV) then
-                                w_flagsctrl <= "100";
-                            elsif (opcode = ADD or opcode = SUB or opcode = CMP or opcode = SHA) then
-                                w_flagsctrl <= "111";
-                            elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
-                                w_flagsctrl <= "110";
-                            elsif (opcode = ROT or opcode = SHL) then
-                                w_flagsctrl <= "101";
-                            end if;
-
-                            -- keep ram in read mode to avoid overwrite
-                            w_ramrw <= '0';
-                            w_ramctrl <= "00";
-
-                            -- increment pc and enable instruction fetch
-                            w_pcctrl <= "001";
-                            w_irctrl <= '1';
-
-                            state <= CONTROL_1;
-                        elsif (addrmodeo = REG_ADDR and addrmoded = REG) then
-                            -- alu inputs
-                            w_aluoctrl <= "011"; -- ram
-                            w_aludctrl <= '1';   -- rd
-
-                            -- register file in/out
-                            w_regorig <= orig; -- ro
-                            w_regdest <= dest; -- rd
-
-                            -- keep registers in read mode to avoid overwrite
-                            w_regrw <= '0';
-                            w_flagsctrl <= "000";
-
-                            -- ram in read mode to get operator
-                            w_ramrw <= '0';
-                            w_ramctrl <= "01"; -- addr comes from ro
-
-                            -- halt pc increment and instruction fetch
-                            w_pcctrl <= "000";
-                            w_irctrl <= '0';
-
-                            -- next stage of instruction
-                            state <= CONTROL_2;
-                        elsif (addrmodeo = ADDR and addrmoded = REG) then
-                            --alu inputs
-                            w_aluoctrl <= "011"; -- ram
-                            w_aludctrl <= '1';   -- rd
-
-                            -- register file in/out
-                            w_regorig <= orig; -- ro
-                            w_regdest <= REG0; -- r0
-
-                            -- keep registers in read mode to avoid overwrite
-                            w_regrw <= '0';
-                            w_flagsctrl <= "000";
-
-                            -- ram in read mode to get operator
-                            w_ramrw <= '0';
-                            w_ramctrl <= "00"; -- addr comes from immediate
-
-                            -- halt pc increment and instruction fetch
-                            w_pcctrl <= "000";
-                            w_irctrl <= '0';
-
-                            -- next stage of instruction
-                            state <= CONTROL_2;
-                        elsif (addrmodeo = IMMEDIATE and addrmoded = REG) then
-                            -- alu inputs
-                            w_aluoctrl <= "000"; -- immediate
-                            w_aludctrl <= '1';   -- rd
-
-                            w_regorig <= orig; -- ro
-                            w_regdest <= REG0; -- r0
-
-                            -- CMP does not write to destination
-                            if (opcode = CMP) then
-                                w_regrw <= '0';
-                            else
-                                w_regrw <= '1';
-                            end if;
-
-                            -- set alu flags according to the instruction
-                            if (opcode = MOV) then
-                                w_flagsctrl <= "100";
-                            elsif (opcode = ADD or opcode = SUB or opcode = CMP or opcode = SHA) then
-                                w_flagsctrl <= "111";
-                            elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
-                                w_flagsctrl <= "110";
-                            elsif (opcode = ROT or opcode = SHL) then
-                                w_flagsctrl <= "101";
-                            end if;
-
-                            -- keep ram in read mode to avoid overwrite
-                            w_ramrw <= '0';
-                            w_ramctrl <= "00";
-
-                            -- increment pc and enable instruction fetch
-                            w_pcctrl <= "001";
-                            w_irctrl <= '1';
-
-                            state <= CONTROL_1;
-                        elsif (addrmodeo = REG and addrmoded = REG_ADDR) then
-                            -- alu inputs
-                            w_aluoctrl <= "100"; -- ro
-                            w_aludctrl <= '0';   -- ram
-
-                            -- register file in/out
-                            w_regorig <= orig; -- ro
-                            w_regdest <= dest; -- rd
-
-                            -- keep registers in read mode to avoid overwrite
-                            w_regrw <= '0';
-
-                            -- set alu flags according to the instruction
-                            if (opcode = MOV) then
-                                w_flagsctrl <= "100";
-                            elsif (opcode = ADD or opcode = SUB or opcode = CMP or opcode = SHA) then
-                                w_flagsctrl <= "111";
-                            elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
-                                w_flagsctrl <= "110";
-                            elsif (opcode = ROT or opcode = SHL) then
-                                w_flagsctrl <= "101";
-                            end if;
-
-                            -- CMP does not write to destination
-                            if (opcode = CMP) then
-                                w_ramrw <= '0';
-                            else
-                                w_ramrw <= '1'; -- set ram to write mode
-                            end if;
-
-                            -- set ram addr source
-                            w_ramctrl <= "10"; -- (rd)
-
-                            -- increment pc and enable instruction fetch
-                            w_pcctrl <= "001";
-                            w_irctrl <= '1';
-
-                            state <= CONTROL_1;
-                        elsif (addrmodeo = REG and addrmoded = ADDR) then
-                            -- alu inputs
-                            w_aluoctrl <= "100"; -- ro
-                            w_aludctrl <= '0';   -- ram
-
-                            -- register file in/out
-                            w_regorig <= REG0; -- r0
-                            w_regdest <= dest; -- rd
-
-                            -- keep registers in read mode to avoid overwrite
-                            w_regrw <= '0';
-
-                            -- set alu flags according to the instruction
-                            if (opcode = MOV) then
-                                w_flagsctrl <= "100";
-                            elsif (opcode = ADD or opcode = SUB or opcode = CMP or opcode = SHA) then
-                                w_flagsctrl <= "111";
-                            elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
-                                w_flagsctrl <= "110";
-                            elsif (opcode = ROT or opcode = SHL) then
-                                w_flagsctrl <= "101";
-                            end if;
-
-                            -- CMP does not write to destination
-                            if (opcode = CMP) then
-                                w_ramrw <= '0';
-                            else
-                                w_ramrw <= '1'; -- set ram to write mode
-                            end if;
-
-                            -- set ram addr source
-                            w_ramctrl <= "00"; -- immediate address
-
-                            -- increment pc and enable instruction fetch
-                            w_pcctrl <= "001";
-                            w_irctrl <= '1';
-
-                            state <= CONTROL_1;
-                        end if;
-                        -- TODO: missing implementation of addressing mode
-                        -- rd = REG_ADDR, ro = IMMEDIATE
-                    elsif (opcode = MVS) then
-                        w_aluoctrl <= "000";
-                        w_aludctrl <= '1';
-
-                        w_regorig <= orig;
-                        w_regdest <= mvsdest;
-
-                        w_ramrw <= '0';
-                        w_regrw <= '1';
-                        w_flagsctrl <= "100";
-                        w_ramctrl <= "00";
-
-                        w_pcctrl <= "001";
-                        w_irctrl <= '1';
-
-                        state <= CONTROL_1;
-                    elsif (opcode = JMP) then
-                        if (addrmoded = "10" or addrmoded = "11") then
-                            w_aluoctrl <= "000"; -- immed
-                            w_aludctrl <= '0';   -- not important
-
-                            w_regorig <= orig; -- ro
-                            w_regdest <= dest; -- rd
-
-                            -- not important (make sure nothing is overwritten)
-                            w_ramrw <= '0';
-                            w_regrw <= '0';
-                            w_flagsctrl <= "000";
-                            w_ramctrl <= "00";
-
-                            -- move (end) to pc register
-                            w_pcctrl <= "101";
-                            w_irctrl <= '0';
-
-                            state <= CONTROL_2;
-                        end if;
-                    elsif (opcode = JZ) then -- JNZ, JC and JVP have the same opcode
-                        if ((addrmoded = "00" and Z = '1') or -- JZ
-                            (addrmoded = "01" and Z = '0') or -- JNZ
-                            (addrmoded = "10" and C = '1') or -- JC
-                            (addrmoded = "11" and V_P = '1')) then -- JVP
-                            w_aluoctrl <= "000"; -- immed
-                            w_aludctrl <= '0';   -- not important
-
-                            w_regorig <= orig;
-                            w_regdest <= dest;
-
-                            w_ramrw <= '0';
-                            w_regrw <= '0';
-                            w_flagsctrl <= "000";
-                            w_ramctrl <= "00";
-
-                            w_pcctrl <= "101";
-                            w_irctrl <= '0';
-
-                            state <= CONTROL_2;
-                        else
-                            w_aluoctrl <= "000";
-                            w_aludctrl <= '0'; -- not important
-
-                            -- not important
-                            w_regorig <= orig;
-                            w_regdest <= dest;
-
-                            -- not important (make sure nothing is overwritten)
-                            w_ramrw <= '0';
-                            w_regrw <= '0';
-                            w_flagsctrl <= "000";
-                            w_ramctrl <= "00";
-
-                            w_pcctrl <= "001";
-                            w_irctrl <= '1';
-
-                            state <= CONTROL_1;
-                        end if;
-                    elsif (opcode = INC) then -- DEC has the same opcode
-                        if (addrmoded = ADDR) then
-                            w_aluoctrl <= "000";
-                            w_aludctrl <= '0';
-
-                            w_regorig <= orig;
-                            w_regdest <= dest;
-
-                            w_ramrw <= '0';
-                            w_regrw <= '0';
-                            w_flagsctrl <= "000";
-                            w_ramctrl <= "00";
-
-                            w_pcctrl <= "000";
-                            w_irctrl <= '0';
-
-                            state <= CONTROL_2;
-                        end if;
-                        -- TODO: missing some addressing modes (not urgent)
-                    elsif (opcode = DJNZ) then
-                        w_aluoctrl <= "000";
-                        w_aludctrl <= '1';
-
-                        w_regorig <= orig;
-                        if (addrmoded = "00") then
-                            w_regdest <= REG1;
-                        elsif (addrmoded = "01") then
-                            w_regdest <= REG2;
-                        elsif (addrmoded = "10") then
-                            w_regdest <= REG3;
-                        elsif (addrmoded = "11") then
-                            w_regdest <= REG4;
-                        end if;
-
-                        w_ramrw <= '0';
-                        w_regrw <= '0';
-                        w_flagsctrl <= "000";
-                        w_ramctrl <= "00";
-
-                        w_pcctrl <= "000";
-                        w_irctrl <= '0';
-
-                        state <= CONTROL_2;
-                    else
-                        state <= RESET;
-                    end if;
-
-                when CONTROL_2 =>
-
-                    if (opcode = MOV  or opcode = ADD  or opcode = SUB or
-                        opcode = CMP  or opcode = ANDx or opcode = ORx or
-                        opcode = XORx or opcode = ROT  or opcode = SHL or
-                        opcode = SHA) then
-                        if (addrmodeo = REG_ADDR and addrmoded = REG) then
-                            -- CMP does not write to destination
-                            if (opcode = CMP) then
-                                w_regrw <= '0';
-                            else
-                                w_regrw <= '1';
-                            end if;
-
-                            -- set alu flags according to the instruction
-                            if (opcode = MOV) then
-                                w_flagsctrl <= "100";
-                            elsif (opcode = ADD or opcode = SUB or opcode = CMP or opcode = SHA) then
-                                w_flagsctrl <= "111";
-                            elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
-                                w_flagsctrl <= "110";
-                            elsif (opcode = ROT or opcode = SHL) then
-                                w_flagsctrl <= "101";
-                            end if;
-
-                            -- ram doesn't matter
-                            w_ramrw <= '0';
-                            w_ramctrl <= "01";
-
-                            w_pcctrl <= "001";
-                            w_irctrl <= '1';
-
-                            state <= CONTROL_1;
-                        elsif (addrmodeo = ADDR and addrmoded = REG) then
-                            -- CMP does not write to destination
-                            if (opcode = CMP) then
-                                w_regrw <= '0';
-                            else
-                                w_regrw <= '1';
-                            end if;
-
-                            -- set alu flags according to the instruction
-                            if (opcode = MOV) then
-                                w_flagsctrl <= "100";
-                            elsif (opcode = ADD or opcode = SUB or opcode = CMP or opcode = SHA) then
-                                w_flagsctrl <= "111";
-                            elsif (opcode = ANDx or opcode = ORx or opcode = XORx) then
-                                w_flagsctrl <= "110";
-                            elsif (opcode = ROT or opcode = SHL) then
-                                w_flagsctrl <= "101";
-                            end if;
-
-                            -- ram doesn't matter
-                            w_ramrw <= '0';
-                            w_ramctrl <= "00";
-
-                            w_pcctrl <= "001";
-                            w_irctrl <= '1';
-
-                            state <= CONTROL_1;
-                        end if;
-                    elsif (opcode = JMP) then
-                        if (addrmoded = "10" or addrmoded = "11") then
-                            w_pcctrl <= "001";
-                            w_irctrl <= '1';
-
-                            state <= CONTROL_1;
-                        end if;
-                    elsif (opcode = JZ) then -- JNZ, JC and JVP have the same opcode
-                        w_pcctrl <= "001";
-                        w_irctrl <= '1';
-
-                        state <= CONTROL_1;
-                    elsif (opcode = INC) then -- DEC has the same opcode
-                        if (addrmoded = ADDR) then
-                            w_aluoctrl <= "000";
-                            w_aludctrl <= '0';
-
-                            w_ramrw <= '1';
-                            w_ramctrl <= "00";
-                            w_flagsctrl <= "100";
-
-                            w_pcctrl <= "001";
-                            w_irctrl <= '1';
-
-                            state <= CONTROL_1;
-                        end if;
-                    elsif (opcode = DJNZ) then
-                        w_aludctrl <= '1';
-
-                        w_regorig <= orig;
-                        w_regdest <= dest;
-
-                        w_ramrw <= '0';
-                        w_regrw <= '1';
-                        w_flagsctrl <= "100";
-
-                        if (Z = '1') then
-                            w_pcctrl <= "101";
-                            w_irctrl <= '0';
-
-                            state <= CONTROL_3;
-                        else
-                            w_pcctrl <= "001";
-                            w_irctrl <= '1';
-
-                            state <= CONTROL_1;
-                        end if;
-                    end if;
-
-                when CONTROL_3 =>
-                    if (opcode = DJNZ) then
-                        w_aluoctrl <= "000";
-
-                        w_ramrw <= '0';
-                        w_regrw <= '0';
-                        w_flagsctrl <= "000";
-
-                        w_pcctrl <= "001";
-                        w_irctrl <= '1';
-
-                        state <= CONTROL_1;
-                    end if;
-
-                when others =>
-                    state <= RESET;
-            end case;
+            state_q <= state_d;
         end if;
     end process;
+
+    sm_transitions : process (state_q, instruction, aluflags) is
+    begin
+        if (opcode = MOV or opcode = ROT  or opcode = SHL or opcode = SHA) then
+            if (addrmodeo = REG and addrmoded = REG) then
+                state_d <= CLK1_MOV_REG_REG;
+            elsif (addrmodeo = REGADDR and addrmoded = REG) then
+                if (state_q = CLK1_MOV_REGADDR_REG) then
+                    state_d <= CLK2_MOV_REGADDR_REG;
+                else
+                    state_d <= CLK1_MOV_REGADDR_REG;
+                end if;
+            elsif (addrmodeo = ADDR and addrmoded = REG) then
+                if (state_q = CLK1_MOV_ADDR_REG) then
+                    state_d <= CLK2_MOV_ADDR_REG;
+                else
+                    state_d <= CLK1_MOV_ADDR_REG;
+                end if;
+            elsif (addrmodeo = IMMEDIATE and addrmoded = REG) then
+                state_d <= CLK1_MOV_IMMED_REG;
+            elsif (addrmodeo = REGADDR and addrmoded = REGADDR) then
+                if (state_q = CLK1_MOV_REGADDR_REGADDR) then
+                    state_d <= CLK2_MOV_REGADDR_REGADDR;
+                else
+                    state_d <= CLK1_MOV_REGADDR_REGADDR;
+                end if;
+            elsif (addrmodeo = ADDR and addrmoded = REGADDR) then
+                if (state_q = CLK1_MOV_ADDR_REGADDR) then
+                    state_d <= CLK2_MOV_ADDR_REGADDR;
+                else
+                    state_d <= CLK1_MOV_ADDR_REGADDR;
+                end if;
+            elsif (addrmodeo = REG and addrmoded = REGADDR) then
+                state_d <= CLK1_MOV_REG_REGADDR;
+            elsif (addrmodeo = IMMEDIATE and addrmoded = REGADDR) then
+                state_d <= CLK1_MOV_IMMED_REGADDR;
+            elsif (addrmodeo = REG and addrmoded = ADDR) then
+                state_d <= CLK1_MOV_REG_ADDR;
+            elsif (addrmodeo = REGADDR and addrmoded = ADDR) then
+                if (state_q = CLK1_MOV_REGADDR_ADDR) then
+                    state_d <= CLK2_MOV_REGADDR_ADDR;
+                else
+                    state_d <= CLK1_MOV_REGADDR_ADDR;
+                end if;
+            else
+                state_d <= HALT;
+            end if;
+        elsif (opcode = ADD or opcode = SUB or opcode = CMP or
+               opcode = ANDx or opcode = ORx or opcode = XORx) then
+            if (addrmodeo = REG and addrmoded = REG) then
+                state_d <= CLK1_MOV_REG_REG;
+            elsif (addrmodeo = REGADDR and addrmoded = REG) then
+                if (state_q = CLK1_MOV_REGADDR_REG) then
+                    state_d <= CLK2_MOV_REGADDR_REG;
+                else
+                    state_d <= CLK1_MOV_REGADDR_REG;
+                end if;
+            elsif (addrmodeo = ADDR and addrmoded = REG) then
+                if (state_q = CLK1_MOV_ADDR_REG) then
+                    state_d <= CLK2_MOV_ADDR_REG;
+                else
+                    state_d <= CLK1_MOV_ADDR_REG;
+                end if;
+            elsif (addrmodeo = IMMEDIATE and addrmoded = REG) then
+                state_d <= CLK1_MOV_IMMED_REG;
+            elsif (addrmodeo = REGADDR and addrmoded = REGADDR) then
+                if (state_q = CLK1_ADD_REGADDR_REGADDR) then
+                    state_d <= CLK2_ADD_REGADDR_REGADDR;
+                elsif (state_q = CLK2_ADD_REGADDR_REGADDR) then
+                    state_d <= CLK3_ADD_REGADDR_REGADDR;
+                else
+                    state_d <= CLK1_ADD_REGADDR_REGADDR;
+                end if;
+            elsif (addrmodeo = ADDR and addrmoded = REGADDR) then
+                if (state_q = CLK1_ADD_ADDR_REGADDR) then
+                    state_d <= CLK2_ADD_ADDR_REGADDR;
+                elsif (state_q = CLK2_ADD_ADDR_REGADDR) then
+                    state_d <= CLK3_ADD_ADDR_REGADDR;
+                else
+                    state_d <= CLK1_ADD_ADDR_REGADDR;
+                end if;
+            elsif (addrmodeo = REG and addrmoded = REGADDR) then
+                if (state_q = CLK1_ADD_REG_REGADDR) then
+                    state_d <= CLK1_MOV_REG_REGADDR;
+                else
+                    state_d <= CLK1_ADD_REG_REGADDR;
+                end if;
+            elsif (addrmodeo = IMMEDIATE and addrmoded = REGADDR) then
+                if (state_q = CLK1_ADD_IMMED_REGADDR) then
+                    state_d <= CLK1_MOV_IMMED_REGADDR;
+                else
+                    state_d <= CLK1_ADD_IMMED_REGADDR;
+                end if;
+            elsif (addrmodeo = REG and addrmoded = ADDR) then
+                if (state_q = CLK1_ADD_REG_ADDR) then
+                    state_d <= CLK1_MOV_REG_ADDR;
+                else
+                    state_d <= CLK1_ADD_REG_ADDR;
+                end if;
+            elsif (addrmodeo = REGADDR and addrmoded = ADDR) then
+                if (state_q = CLK1_ADD_REGADDR_ADDR) then
+                    state_d <= CLK2_ADD_REGADDR_ADDR;
+                elsif (state_q = CLK2_ADD_REGADDR_ADDR) then
+                    state_d <= CLK3_ADD_REGADDR_ADDR;
+                else
+                    state_d <= CLK1_ADD_REGADDR_ADDR;
+                end if;
+            else
+                state_d <= HALT;
+            end if;
+        elsif (opcode = JMP) then
+            if (addrmoded = REG) then
+                if (state_q = JMP_REG) then
+                    state_d <= JMP_END;
+                else
+                    state_d <= JMP_REG;
+                end if;
+            elsif (addrmoded = REGADDR) then
+                if (state_q = JMP_REGADDR_1) then
+                    state_d <= JMP_REGADDR_2;
+                elsif (state_q = JMP_REGADDR_2) then
+                    state_d <= JMP_END;
+                else
+                    state_d <= JMP_REGADDR_1;
+                end if;
+            elsif (addrmoded = ADDR or addrmoded = IMMEDIATE) then
+                if (state_q = JMP_ADDR) then
+                    state_d <= JMP_END;
+                else
+                    state_d <= JMP_ADDR;
+                end if;
+            else
+                state_d <= HALT;
+            end if;
+        elsif (opcode = JZ) then -- JNZ, JC and JVP have the same opcode
+            if ((addrmoded = "00" and Z = '1') or -- JZ
+                (addrmoded = "01" and Z = '0') or -- JNZ
+                (addrmoded = "10" and C = '1') or -- JC
+                (addrmoded = "11" and V_P = '1')) then -- JVP
+                if (state_q = JMP_ADDR) then
+                    state_d <= JMP_END;
+                else
+                    state_d <= JMP_ADDR;
+                end if;
+            else
+                state_d <= HALT;
+            end if;
+        elsif (opcode = INC) then -- DEC has the same opcode
+            if (addrmoded = ADDR) then
+                if (state_q = INC_ADDR_1) then
+                    state_d <= INC_ADDR_2;
+                else
+                    state_d <= INC_ADDR_1;
+                end if;
+            else
+                state_d <= HALT;
+            end if;
+        else
+            state_d <= HALT;
+        end if;
+    end process;
+
+    sm_outputs : process (state_q, instruction, aluflags, flagsctrl_aux, rw_aux) is
+    begin
+        case (state_q) is
+            when INC_ADDR_1 =>
+                aluoctrl_d  <= "000"; -- immed
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= "000";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00";
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "00";
+                irctrl_d    <= '0';
+            when INC_ADDR_2 =>
+                aluoctrl_d  <= "000"; -- immed
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= "100";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00";
+                ramrw_d     <= '1';
+                regrw_d     <= '0';
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+            when JMP_ADDR =>
+                aluoctrl_d  <= "000"; -- immed
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= "000";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00";
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "11";
+                irctrl_d    <= '0';
+            --when JMP_REG =>
+
+            --when JMP_REGADDR_1 =>
+
+            --when JMP_REGADDR_1 =>
+
+            when JMP_END =>
+                aluoctrl_d  <= "000"; -- immed
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= "000";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00";
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+            when CLK1_MOV_REG_REG =>
+                aluoctrl_d  <= "100"; -- ro
+                aludctrl_d  <= '1';   -- rd
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= flagsctrl_aux;
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00";
+                ramrw_d     <= '0';
+                regrw_d     <= rw_aux;
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+            when CLK1_MOV_REGADDR_REG =>
+                aluoctrl_d  <= "011"; -- ram
+                aludctrl_d  <= '1';   -- rd
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= "000";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "01";
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "00";
+                irctrl_d    <= '0';
+            when CLK1_MOV_ADDR_REG =>
+                aluoctrl_d  <= "011"; -- ram
+                aludctrl_d  <= '1';   -- rd
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= REG0;  -- r0
+                flagsctrl_d <= "000";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00";
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "00";
+                irctrl_d    <= '0';
+            when CLK1_MOV_IMMED_REG =>
+                aluoctrl_d  <= "000"; -- immediate
+                aludctrl_d  <= '1';   -- rd
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= REG0;  -- r0
+                flagsctrl_d <= flagsctrl_aux;
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00";
+                ramrw_d     <= '0';
+                regrw_d     <= rw_aux;
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+            when CLK1_MOV_REG_REGADDR =>
+                aluoctrl_d  <= "100"; -- ro
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= flagsctrl_aux;
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "10";
+                ramrw_d     <= rw_aux;
+                regrw_d     <= '0';
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+            when CLK1_MOV_REGADDR_REGADDR =>
+                aluoctrl_d  <= "011"; -- ram
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= "000";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "01"; -- (ro)
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "00";
+                irctrl_d    <= '0';
+            when CLK1_MOV_ADDR_REGADDR =>
+                aluoctrl_d  <= "011"; -- ram
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= REG0;  -- r0
+                flagsctrl_d <= "000";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00"; -- (end)
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "00";
+                irctrl_d    <= '0';
+            when CLK1_MOV_IMMED_REGADDR =>
+                aluoctrl_d  <= "000"; -- immediate
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= REG0;  -- r0
+                flagsctrl_d <= flagsctrl_aux;
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "10";
+                ramrw_d     <= rw_aux;
+                regrw_d     <= '0';
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+            when CLK1_MOV_REG_ADDR =>
+                aluoctrl_d  <= "100"; -- ro
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= REG0;  -- r0
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= flagsctrl_aux;
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00";
+                ramrw_d     <= rw_aux;
+                regrw_d     <= '0';
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+            when CLK1_MOV_REGADDR_ADDR =>
+                aluoctrl_d  <= "011"; -- ram
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= REG0;  -- r0
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= "000";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "01"; -- (r0)
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "00";
+                irctrl_d    <= '0';
+            --when CLK1_ADD_REGADDR_REGADDR =>
+
+            --when CLK1_ADD_ADDR_REGADDR =>
+
+            when CLK1_ADD_REG_REGADDR =>
+                aluoctrl_d  <= "100"; -- ro
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= "000";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "10"; -- (rd)
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "00";
+                irctrl_d    <= '0';
+            when CLK1_ADD_IMMED_REGADDR =>
+                aluoctrl_d  <= "000"; -- immediate
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= REG0;  -- r0
+                flagsctrl_d <= "000";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "10"; -- (rd)
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "00";
+                irctrl_d    <= '0';
+            when CLK1_ADD_REG_ADDR =>
+                aluoctrl_d  <= "100"; -- ro
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= REG0;  -- r0
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= "000";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00"; -- (end)
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "00";
+                irctrl_d    <= '0';
+            --when CLK1_ADD_REGADDR_ADDR =>
+
+            when CLK2_MOV_REGADDR_REG =>
+                aluoctrl_d  <= "011"; -- ram
+                aludctrl_d  <= '1';   -- rd
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= flagsctrl_aux;
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "01";
+                ramrw_d     <= '0';
+                regrw_d     <= rw_aux;
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+            when CLK2_MOV_ADDR_REG =>
+                aluoctrl_d  <= "011"; -- ram
+                aludctrl_d  <= '1';   -- rd
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= REG0;  -- r0
+                flagsctrl_d <= flagsctrl_aux;
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00";
+                ramrw_d     <= '0';
+                regrw_d     <= rw_aux;
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+            when CLK2_MOV_REGADDR_REGADDR =>
+                aluoctrl_d  <= "011"; -- ram
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= flagsctrl_aux;
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "10"; -- (rd)
+                ramrw_d     <= rw_aux;
+                regrw_d     <= '0';
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+            when CLK2_MOV_ADDR_REGADDR =>
+                aluoctrl_d  <= "011"; -- ram
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= REG0;  -- r0
+                flagsctrl_d <= flagsctrl_aux;
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "10"; -- (r0)
+                ramrw_d     <= rw_aux;
+                regrw_d     <= '0';
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+            when CLK2_MOV_REGADDR_ADDR =>
+                aluoctrl_d  <= "011"; -- ram
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= REG0;  -- r0
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= flagsctrl_aux;
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00"; -- (end)
+                ramrw_d     <= rw_aux;
+                regrw_d     <= '0';
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+            --when CLK2_ADD_REGADDR_REGADDR =>
+
+            --when CLK2_ADD_ADDR_REGADDR =>
+
+            --when CLK2_ADD_REGADDR_ADDR =>
+
+            --when CLK3_ADD_REGADDR_REGADDR =>
+
+            --when CLK3_ADD_ADDR_REGADDR =>
+
+            --when CLK3_ADD_REGADDR_ADDR =>
+
+            when HALT =>
+                aluoctrl_d  <= "000";
+                aludctrl_d  <= '0';
+                regorig_d   <= "0000";
+                regdest_d   <= "0000";
+                flagsctrl_d <= "000";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00";
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+            when others =>
+                aluoctrl_d  <= "000";
+                aludctrl_d  <= '0';
+                regorig_d   <= "0000";
+                regdest_d   <= "0000";
+                flagsctrl_d <= "000";
+                stackctrl_d <= "00";
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00";
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "01";
+                irctrl_d    <= '1';
+        end case;
+    end process;
+
+    rw_aux <= '0' when (opcode = CMP) else '1';
+
+    flagsctrl_aux <= "100" when (opcode = MOV) else
+                     "111" when (opcode = ADD or opcode = SUB or opcode = CMP or opcode = SHA) else
+                     "110" when (opcode = ANDx or opcode = ORx or opcode = XORx) else
+                     "101" when (opcode = SHL or opcode = ROT) else
+                     "000";
+
+    aluctrl_d <= ALU_WIRE when (opcode = JMP) else
+                 ALU_WIRE when (opcode = JZ) else
+                 ALU_DEC  when (opcode = DJNZ) else
+                 ALU_WIRE when (opcode = MOV) else
+                 ALU_WIRE when (opcode = MVS) else
+                 ALU_ADD  when (opcode = ADD) else
+                 ALU_SUB  when (opcode = SUB) else
+                 ALU_SUB  when (opcode = CMP) else
+                 ALU_INC  when (opcode = INC and instruction(8) = '0') else
+                 ALU_DEC  when (opcode = DEC and instruction(8) = '1') else
+                 ALU_AND  when (opcode = ANDx) else
+                 ALU_OR   when (opcode = ORx) else
+                 ALU_XOR  when (opcode = XORx) else
+                 ALU_ROT  when (opcode = ROT) else
+                 ALU_SHL  when (opcode = SHL) else
+                 ALU_SHA  when (opcode = SHA) else
+                 ALU_WIRE;
+
+     aluoctrl  <= aluoctrl_d;
+     aludctrl  <= aludctrl_d;
+     regorig   <= regorig_d;
+     regdest   <= regdest_d;
+     aluctrl   <= aluctrl_d;
+     flagsctrl <= flagsctrl_d;
+     stackctrl <= stackctrl_d;
+     latchctrl <= latchctrl_d;
+     romctrl   <= romctrl_d;
+     ramctrl   <= ramctrl_d;
+     ramrw     <= ramrw_d;
+     regrw     <= regrw_d;
+     pcctrl    <= pcctrl_d;
+     irctrl    <= irctrl_d;
 
 end architecture;

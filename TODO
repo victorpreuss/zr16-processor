@@ -5,6 +5,19 @@
 
 - Create a debugger entity to put the debug data that needs to be sent via serial
 - Check why serial communication fails sometimes
-    -- Probably needs the usage of a protocol with checksum of parity bit at least
+    -- Probably needs the usage of a protocol with checksum or parity bit at least
 
--- Test operations using 32 bit variables to check the usage of carry in sum/sub
+- Test operations using 32 bit variables to check the usage of carry in sum/sub
+- Need to fix two last addressing modes of MOV to work with operations (ADD, SUB, etc)
+
+
+TODO:
+
+- Stack
+- Latch in front of ALU
+- Adressings of ROM using romctrl
+- 3 addressing modes from ADD type instructions (addr, addr - 3 cycles)
+- 2 addressing modes from JMP instruction
+- INC/DEC instruction
+- MVS instruction
+- DJNZ instruction

@@ -20,7 +20,7 @@ entity register_file is
         rst_n    : in std_logic;
         rw       : in std_logic;                    -- read = '0' / write = '1'
         addro    : in std_logic_vector(1 downto 0); -- bits 9:8 of instruction
-        pcctrl   : in std_logic_vector(2 downto 0);
+        pcctrl   : in std_logic_vector(1 downto 0);
         in1      : in std_logic_vector(3 downto 0); -- origin register
         in2      : in std_logic_vector(3 downto 0); -- destination register
         alu      : in std_logic_vector(7 downto 0); -- alu data
@@ -83,15 +83,13 @@ begin
                 end if;
             end if;
 
-            if (pcctrl = "001") then            -- increment pc
+            if (pcctrl = "01") then            -- increment pc
                 pc_int := rf(14)(1 downto 0) & rf(13)(7 downto 0);
                 pc_int := std_logic_vector(unsigned(pc_int) + 1);
-            elsif (pcctrl = "010") then         -- jmp par rd
+            elsif (pcctrl = "10") then         -- jmp par rd
                 pc_int := addro & rf(idx_d);
-            elsif (pcctrl = "100") then         -- jmp par (rd)
+            elsif (pcctrl = "11") then         -- jmp par (rd) or jmp (end)
                 pc_int := addro & alu;
-            elsif (pcctrl = "101") then         -- jmp end
-                pc_int := addro & in2 & in1;
             end if;
 
             rf(13)(7 downto 0) <= pc_int(7 downto 0);
