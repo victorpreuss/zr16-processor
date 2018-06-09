@@ -11,7 +11,7 @@ def main():
                         help='Assembly or C file to run simulation')
 
     parser.add_argument('-t', '--time', dest='time', action='store', type=str,
-                        help='')
+                        help='Simulation time')
 
     args = parser.parse_args()
 

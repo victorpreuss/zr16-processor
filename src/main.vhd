@@ -78,9 +78,11 @@ architecture arch of main is
     signal ramctrl   : std_logic_vector(1 downto 0) := "00";
     signal ramrw     : std_logic := '0';
     signal regrw     : std_logic := '0';
-    signal pcctrl    : std_logic_vector(2 downto 0) := "000";
+    signal pcctrl    : std_logic_vector(1 downto 0) := "00";
     signal flagsctrl : std_logic_vector(2 downto 0) := "000";
-    signal aluctrl   : std_logic_vector(3 downto 0) := (others => '0');
+    signal stackctrl : std_logic_vector(1 downto 0) := "00";
+    signal latchctrl : std_logic := '0';
+    signal aluctrl   : aluop_t := ALU_WIRE;
     signal aluoctrl  : std_logic_vector(2 downto 0) := (others => '0');
     signal aludctrl  : std_logic := '0';
 
@@ -103,22 +105,24 @@ begin
     debug : process (clk)
         variable L : line;
     begin
-        write(L, string'("Registers Content:"));
-        writeline(output, L);
-        for i in 0 to 15 loop
-            write(L, to_integer(unsigned(regdebug(i))));
-            write(L, string'(" "));
-        end loop;
-        writeline(output, L);
+        if (rising_edge(clk)) then
+            write(L, string'("Registers Content:"));
+            writeline(output, L);
+            for i in 0 to 15 loop
+                write(L, to_integer(unsigned(regdebug(i))));
+                write(L, string'(" "));
+            end loop;
+            writeline(output, L);
 
-        write(L, string'("RAM Content:"));
-        writeline(output, L);
-        for i in 0 to 15 loop
-            write(L, to_integer(unsigned(ramdebug(i))));
-            write(L, string'(" "));
-        end loop;
-        writeline(output, L);
-        writeline(output, L);
+            write(L, string'("RAM Content:"));
+            writeline(output, L);
+            for i in 0 to 15 loop
+                write(L, to_integer(unsigned(ramdebug(i))));
+                write(L, string'(" "));
+            end loop;
+            writeline(output, L);
+            writeline(output, L);
+        end if;
     end process;
 
     clk_inst : clk_gen
@@ -167,6 +171,8 @@ begin
         flctrl  => flagsctrl,
         ro      => ro,
         rd      => rd,
+        r13     => r13,
+        r14     => r14,
         r15     => r15,
         pc      => pc,
         regdebug => regdebug
@@ -219,8 +225,10 @@ begin
         ramctrl     => ramctrl,
         ramrw       => ramrw,
         regrw       => regrw,
+        stackctrl   => stackctrl,
         pcctrl      => pcctrl,
         flagsctrl   => flagsctrl,
+        latchctrl   => latchctrl,
         aluctrl     => aluctrl,
         aluoctrl    => aluoctrl,
         aludctrl    => aludctrl,

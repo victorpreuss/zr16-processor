@@ -1,6 +1,23 @@
-- Test with simple assembly all implemented instructions
-- Check why serial communication fails sometimes (offset by 2 the registers and memories)
-- Create a debugger entity to put the debug data that needs to be sent via serial
-- Create testbenches for all modules (specially control unit and datapath)
+- Create testbenches for all modules
 - Make a table of all instructions and find out which ones are missing
-- Finish ALU instructions
+- Test with simple assembly all implemented instructions
+- Improve usage of logic in the ALU (parity bit and sum/sub Cout/VP for example) and Control Unit
+
+- Create a debugger entity to put the debug data that needs to be sent via serial
+- Check why serial communication fails sometimes
+    -- Probably needs the usage of a protocol with checksum or parity bit at least
+
+- Test operations using 32 bit variables to check the usage of carry in sum/sub
+- Need to fix two last addressing modes of MOV to work with operations (ADD, SUB, etc)
+
+
+TODO:
+
+- Stack
+- Latch in front of ALU
+- Adressings of ROM using romctrl
+- 3 addressing modes from ADD type instructions (addr, addr - 3 cycles)
+- 2 addressing modes from JMP instruction
+- INC/DEC instruction
+- MVS instruction
+- DJNZ instruction

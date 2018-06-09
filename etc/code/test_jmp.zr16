@@ -1,0 +1,20 @@
+        mov r0, 15
+        mov r1, r0
+        mov r2, r0
+        cmp r1, r2
+        jz test1
+        mov r0, 255
+test1:  mov r0, 20
+        mov r1, r0
+        mov r0, 21
+        cmp r0, r1
+        jz test1
+        jnz test2
+        jmp test1
+test2:  mov r0, 150
+        mov r1, r0
+        mov r0, 160
+        add r0, r1
+        jc test3
+        jmp test2
+test3:  mov r0, 100
