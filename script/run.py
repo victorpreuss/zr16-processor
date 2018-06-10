@@ -33,11 +33,11 @@ def main():
     run_simulation(args.time)
 
 def compile_c_file(file_name):
-    cmd = 'TZ=Europe/Berlin wine ../etc/compiler/ZR16_C_Compiler.exe' + file_name + '-asm -debug'
+    cmd = 'TZ=Europe/Berlin wine ../etc/compiler/ZR16_C_Compiler.exe ' + file_name + ' -asm -debug'
     ret = os.system(cmd)
     print(ret)
 
-    return open(file_name[:-2] + '.zr16.stringhex')
+    return open(file_name + '.zr16.stringhex')
 
 def compile_asm_file(file_name):
     cmd = 'TZ=Europe/Berlin wine ../etc/compiler/ZR16_Compiler.exe ' + file_name + ' -debug'

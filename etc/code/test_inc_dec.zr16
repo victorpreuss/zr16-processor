@@ -1,5 +1,33 @@
-inicio: inc (0)
-mov r0, 10
-mov r1, r0
-cmp r0, r1
-jz inicio
+mvs r1, 13
+mvs r2, 14
+inc (r1)
+inc (r2)
+inc (r1)
+inc (r2)
+dec (r1)
+dec (r2)
+inc (r1)
+inc (r2)
+inc (0)
+inc (1)
+inc (0)
+inc (1)
+inc (0)
+inc (1)
+dec (1)
+dec (0)
+inc r5
+inc r5
+inc r5
+inc r5
+inc r5
+inc r6
+inc r6
+inc r6
+inc r6
+inc r6
+dec r5
+dec r5
+dec r6
+dec (1)
+dec (0)

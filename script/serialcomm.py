@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import serial
 from prettytable import PrettyTable
 
@@ -9,7 +11,7 @@ ser = serial.Serial(port='/dev/ttyUSB0',
                     stopbits=serial.STOPBITS_ONE,
                     timeout=1)
 
-while 1:
+while ser.is_open:
     data = input("Type the number of clks to execute or 'e' to exit: ")
 
     if data == 'e':

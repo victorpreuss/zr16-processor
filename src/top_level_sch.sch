@@ -40,24 +40,8 @@
         <signal name="XLXN_265(7:0)" />
         <signal name="romdata(15:8)" />
         <signal name="romdata(7:0)" />
-        <signal name="XLXN_322(7:0)" />
-        <signal name="XLXN_323(7:0)" />
-        <signal name="XLXN_324(7:0)" />
-        <signal name="XLXN_331" />
-        <signal name="XLXN_332" />
-        <signal name="XLXN_333(2:0)" />
-        <signal name="XLXN_334" />
-        <signal name="XLXN_335" />
-        <signal name="XLXN_336(15:0)" />
-        <signal name="XLXN_337(2:0)" />
-        <signal name="XLXN_338(15:0)" />
-        <signal name="XLXN_339(2:0)" />
-        <signal name="XLXN_341" />
-        <signal name="XLXN_342" />
         <signal name="XLXN_220(7:0)" />
-        <signal name="XLXN_347(7:0)" />
         <signal name="XLXN_348(7:0)" />
-        <signal name="XLXN_349(2:0)" />
         <signal name="XLXN_351" />
         <signal name="XLXN_352" />
         <port polarity="Input" name="RST_N" />

@@ -106,6 +106,10 @@ begin
         variable L : line;
     begin
         if (rising_edge(clk)) then
+            write(L, string'("Instruction:" ));
+            writeline(output, L);
+            hwrite(L, instruction);
+            writeline(output, L);
             write(L, string'("Registers Content:"));
             writeline(output, L);
             for i in 0 to 15 loop

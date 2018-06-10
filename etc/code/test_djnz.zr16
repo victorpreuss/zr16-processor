@@ -1,0 +1,3 @@
+mvs r1, 5
+here: djnz r1, here
+mov r0, 255

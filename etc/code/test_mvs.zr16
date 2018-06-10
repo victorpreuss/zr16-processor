@@ -1,0 +1,8 @@
+mvs r0, 1
+mvs r1, 19
+mvs r3, 27
+mvs r2, 15
+mvs r1, 100
+mvs r4, 60
+mvs r7, 127
+mvs r5, 64

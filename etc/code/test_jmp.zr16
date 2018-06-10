@@ -1,3 +1,16 @@
+; test of jmp par (rd)
+        inc (1)
+        inc (1)
+        inc (1)
+        dec (1)
+        dec (1)
+        dec (1)
+        mov r0, 3
+        mov (10), r0
+        mvs r1, 10
+        jmp p0 (r1)
+
+; test of jmp (end) and conditional jmps
         mov r0, 15
         mov r1, r0
         mov r2, r0
@@ -18,3 +31,13 @@ test2:  mov r0, 150
         jc test3
         jmp test2
 test3:  mov r0, 100
+
+; test of jmp par rd
+        inc (1)
+        inc (1)
+        inc (1)
+        dec (1)
+        dec (1)
+        dec (1)
+        mvs r1, 23
+        jmp p0 r1
