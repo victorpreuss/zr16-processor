@@ -163,23 +163,24 @@ begin
 
     registers_inst : register_file
     port map (
-        clk     => clk,
-        rst_n   => rst_n,
-        rw      => regrw,
-        addro   => addrmodeo,
-        pcctrl  => pcctrl,
-        in1     => regorig,
-        in2     => regdest,
-        alu     => aluout,
-        flags   => aluflags,
-        flctrl  => flagsctrl,
-        ro      => ro,
-        rd      => rd,
-        r13     => r13,
-        r14     => r14,
-        r15     => r15,
-        pc      => pc,
-        regdebug => regdebug
+        clk       => clk,
+        rst_n     => rst_n,
+        rw        => regrw,
+        addro     => addrmodeo,
+        pcctrl    => pcctrl,
+        stackctrl => stackctrl,
+        in1       => regorig,
+        in2       => regdest,
+        alu       => aluout,
+        flags     => aluflags,
+        flctrl    => flagsctrl,
+        ro        => ro,
+        rd        => rd,
+        r13       => r13,
+        r14       => r14,
+        r15       => r15,
+        pc        => pc,
+        regdebug  => regdebug
     );
 
     mux_alu_o_inst : mux8 generic map(8)

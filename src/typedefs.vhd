@@ -103,23 +103,24 @@ package typedefs is
 
     component register_file is
     port (
-        clk      : in std_logic;
-        rst_n    : in std_logic;
-        rw       : in std_logic;
-        addro    : in std_logic_vector(1 downto 0);
-        pcctrl   : in std_logic_vector(1 downto 0);
-        in1      : in std_logic_vector(3 downto 0);
-        in2      : in std_logic_vector(3 downto 0);
-        alu      : in std_logic_vector(7 downto 0);
-        flags    : in std_logic_vector(2 downto 0);
-        flctrl   : in std_logic_vector(2 downto 0);
-        ro       : out std_logic_vector(7 downto 0);
-        rd       : out std_logic_vector(7 downto 0);
-        r13      : out std_logic_vector(7 downto 0);
-        r14      : out std_logic_vector(7 downto 0);
-        r15      : out std_logic_vector(7 downto 0);
-        pc       : out std_logic_vector(9 downto 0);
-        regdebug : out bytearray_t(15 downto 0)
+        clk       : in std_logic;
+        rst_n     : in std_logic;
+        rw        : in std_logic;
+        addro     : in std_logic_vector(1 downto 0);
+        pcctrl    : in std_logic_vector(1 downto 0);
+        stackctrl : in std_logic_vector(1 downto 0);
+        in1       : in std_logic_vector(3 downto 0);
+        in2       : in std_logic_vector(3 downto 0);
+        alu       : in std_logic_vector(7 downto 0);
+        flags     : in std_logic_vector(2 downto 0);
+        flctrl    : in std_logic_vector(2 downto 0);
+        ro        : out std_logic_vector(7 downto 0);
+        rd        : out std_logic_vector(7 downto 0);
+        r13       : out std_logic_vector(7 downto 0);
+        r14       : out std_logic_vector(7 downto 0);
+        r15       : out std_logic_vector(7 downto 0);
+        pc        : out std_logic_vector(9 downto 0);
+        regdebug  : out bytearray_t(15 downto 0)
     );
     end component;
 

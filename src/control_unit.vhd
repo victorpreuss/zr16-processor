@@ -64,9 +64,12 @@ architecture arch of control_unit is
     constant ORx  : std_logic_vector(3 downto 0) := "0101";
     constant XORx : std_logic_vector(3 downto 0) := "0110";
 
-    constant ROT : std_logic_vector(3 downto 0) := "1010";
-    constant SHL : std_logic_vector(3 downto 0) := "1011";
-    constant SHA : std_logic_vector(3 downto 0) := "1100";
+    constant ROT  : std_logic_vector(3 downto 0) := "1010";
+    constant SHL  : std_logic_vector(3 downto 0) := "1011";
+    constant SHA  : std_logic_vector(3 downto 0) := "1100";
+
+    constant CALL : std_logic_vector(3 downto 0) := "0010";
+    constant RET  : std_logic_vector(3 downto 0) := "0011";
 
     -- addressing modes
     constant REG       : std_logic_vector(1 downto 0) := "00";
@@ -133,7 +136,9 @@ architecture arch of control_unit is
                      ADD_REGADDR_ADDR_1, ADD_REGADDR_ADDR_2, ADD_REGADDR_ADDR_3,
                      JMP_REG, JMP_REGADDR_1, JMP_REGADDR_2, JMP_ADDR, JMP_END,
                      INC_REG, INC_REGADDR_1, INC_REGADDR_2, INC_ADDR_1, INC_ADDR_2,
-                     DJNZ_REG_ADDR_1
+                     DJNZ_REG_ADDR_1,
+                     CALL_ADDR_1,
+                     RET_ADDR_1
                     );
 
     signal state_d : state_t := HALT;
@@ -142,6 +147,8 @@ architecture arch of control_unit is
     signal regdest_aux   : std_logic_vector(3 downto 0) := "0000";
     signal rw_aux        : std_logic := '0';
     signal flagsctrl_aux : std_logic_vector(2 downto 0) := "000";
+
+    signal debug : integer := 0;
 
 begin
 
@@ -200,7 +207,7 @@ begin
             else
                 state_d <= HALT;
             end if;
-        elsif (opcode = MVS) then
+        elsif (opcode = MVS and instruction(7) = '0') then
             state_d <= MVS_IMMED_REG;
         elsif (opcode = ADD or opcode = SUB or opcode = CMP or
                opcode = ANDx or opcode = ORx or opcode = XORx) then
@@ -332,14 +339,56 @@ begin
             else
                 state_d <= DJNZ_REG_ADDR_1;
             end if;
+        elsif (opcode = CALL) then
+            if (addrmoded = ADDR or addrmoded = IMMEDIATE) then
+                if (state_q = CALL_ADDR_1) then
+                    state_d <= JMP_END;
+                else
+                    state_d <= CALL_ADDR_1;
+                end if;
+            end if;
+        elsif (opcode = RET and instruction(7) = '1') then
+            if (state_q = RET_ADDR_1) then
+                state_d <= JMP_END;
+            else
+                state_d <= RET_ADDR_1;
+            end if;
         else
             state_d <= HALT;
         end if;
     end process;
 
-    sm_outputs : process (state_q, instruction, aluflags, flagsctrl_aux, rw_aux) is
+    sm_outputs : process (state_q, instruction, aluflags, flagsctrl_aux, rw_aux, regdest_aux) is
     begin
         case (state_q) is
+            when RET_ADDR_1 =>
+                aluoctrl_d  <= "000"; -- immed
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= "000";
+                stackctrl_d <= "10"; -- pop from stack
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00";
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "00";
+                irctrl_d    <= '0';
+            when CALL_ADDR_1 =>
+                aluoctrl_d  <= "000"; -- immed
+                aludctrl_d  <= '0';   -- ram
+                regorig_d   <= orig;  -- ro
+                regdest_d   <= dest;  -- rd
+                flagsctrl_d <= "000";
+                stackctrl_d <= "01"; -- save in the stack
+                latchctrl_d <= '0';
+                romctrl_d   <= "00";
+                ramctrl_d   <= "00";
+                ramrw_d     <= '0';
+                regrw_d     <= '0';
+                pcctrl_d    <= "11";
+                irctrl_d    <= '0';
             when INC_REGADDR_1 =>
                 aluoctrl_d  <= "000"; -- immed
                 aludctrl_d  <= '0';   -- ram

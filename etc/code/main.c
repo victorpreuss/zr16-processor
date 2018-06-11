@@ -35,6 +35,17 @@ void main (void)
 
     bubblesort();
 
+    v[0] = 19;
+    v[1] = 13;
+    v[2] = 16;
+    v[3] = 12;
+    v[4] = 18;
+    v[5] = 11;
+    v[6] = 14;
+    v[7] = 15;
+
+    bubblesort();
+
     //for (i = 1; i < MAX; i = i+1)
     //{
     //    for (j = 0; j < MAX-1; j = j+1)
