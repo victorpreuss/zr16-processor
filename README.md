@@ -1,3 +1,33 @@
+# ZR16-processor
+
+## Getting Started
+
+### Prerequisites
+
+### Installing
+
+## Running the tests
+
+## Deploying on the Mojo board
+
+## Introduction to ZR16S08 processor
+
+### Registers
+
+### Stack
+
+### Instructions
+
+## Author
+
+## License
+
+## Acknowledgements
+
+Thanks to the folks at Santa Maria DH who developed the ZR16S08 microprocessor and provide a nice documentation about their processor. And a special thanks for professor Eduardo Bezerra who came up with the project idea and helped with insights throughout the implementation.
+
+
+
 Important commands:
 
 $ ghdl -i --std=08 --workdir=work tb/*.vhd src/*.vhd
