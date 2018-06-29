@@ -101,7 +101,7 @@ The HW used for validation of the project was:
 
 ### Deploying on the Mojo board
 
-First it is necessary to open the project (**xilinx/zr16s08.xise**) inside the Xilinx ISE 14.7. There, all you should have to do is to double-click **Generate Programming File** in the **Design** tab. This will synthesize the project and create the binary file.
+First it is necessary to open the project (**xilinx/zr16s08.xise**) inside the Xilinx ISE 14.7. There, all you should have to do is to double-click **Generate Programming File** in the **Design** tab (shown below). This will synthesize the project and create the binary file.
 
 ![enter image description here](https://i.imgur.com/YR9wBxS.png)
 
@@ -112,7 +112,7 @@ $ ./upload_to_ram.sh
 ```
 There's also the script **script/upload_to_flash.sh** to use the non-volatile memory on the Mojo Board.
 
-The processor if configured to receive perform the number of clocks specified via serial interface. Therefore, the user must connect a USB/Serial converter between computer and Mojo Board. The pins are configures as follows:
+The processor is configured to perform the number of clocks specified via serial interface. Therefore, the user must connect a USB/Serial converter between computer and Mojo Board. The pins are configured as follows:
 - **P138** - Processor **RX** pin (the **TX** on the USB/Serial converter)
 - **P139** - Processor **TX** pin (the **RX** on the USB/Serial converter)
 
@@ -121,7 +121,7 @@ After setting up the serial communication, all that's left is to run:
 $ cd scripts
 $ python serialcomm.py
 ```
-And type on the command line how many clock pulses you want to execute. After that, the console will print the registers and RAM[0:15] after each clock cycle on the FPGA. Now you can play and debug your code!
+Now type on the command line how many clock cycles you want to execute. After that, the console will print the registers and RAM[0:15] after each clock cycle on the FPGA. Now you can play and debug your code!
 
 To run the **script/serialcomm.py** you must have pySerial and PrettyTable installed:
 ```
