@@ -1,7 +1,7 @@
 
 # ZR16-processor
 
- VHDL implementation of the processor contained in the ZR16S08 microcontroller developed by SMDH/Chipus.
+ A VHDL implementation of the processor contained in the ZR16S08 microcontroller developed by SMDH/Chipus.
 
 ## Getting Started
 
@@ -83,7 +83,14 @@ There are also other scripts to simplify the simulation and/or hardware deployme
 
 ### HW Prerequisites
 
-
+The HW used for validation of the project was:
+- Mojo Board
+	- Xilinx Spartan 6 XC6SLX9 FPGA
+	- 84 digital IO pins
+	- An ATmega32U4 used for configuring the FPGA, USB communications, and reading the analog pins
+	- 8 analog inputs
+- USB/Serial Converter
+	- Used to debug the HW application
 
 ### Deploying on the Mojo board
 
@@ -92,8 +99,6 @@ There are also other scripts to simplify the simulation and/or hardware deployme
 This is the block diagram of the current implementation of ZR16 processor.
 
 ![Block diagram of implemented ZR16 processor](https://i.imgur.com/1Gfiahf.png)
-
-It contains all the fundamental block displayed on SDMH power point presentation.
 
 ### Registers
 
@@ -105,11 +110,14 @@ It contains all the fundamental block displayed on SDMH power point presentation
 
 ## Authors
 - **Victor Hugo Bueno Preuss** - *Initial Work*
-	- Postgraduate Student in UFSC - Electrical Engineering Department
-	- email: victor.preuss@posgrad.ufsc.br
+	- Postgraduate Student at UFSC - Electrical Engineering Department
+	- Contact: victor.preuss@gmail.com
 ## License
+
+ZR16-processor is under GNU General Public License, version 3. See LICENSE file.
 
 ## Acknowledgements
 
 Great thanks to the folks at Santa Maria DH who developed the ZR16S08 microprocessor and provide a nice documentation about it. (**That's brazillian technology! Brilliant!**)
+
 Also a special thanks for professor Eduardo Augusto Bezerra who came up with the project idea and helped with insights throughout the implementation.
