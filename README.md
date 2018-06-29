@@ -103,6 +103,8 @@ The HW used for validation of the project was:
 
 First it is necessary to open the project (**xilinx/zr16s08.xise**) inside the Xilinx ISE 14.7. There, all you should have to do is to double-click **Generate Programming File** in the **Design** tab. This will synthesize the project and create the binary file.
 
+![enter image description here](https://i.imgur.com/YR9wBxS.png)
+
 To perform tests you can record the binary in the FPGA volatile memory using the following command:
 ```
 $ cd scripts
