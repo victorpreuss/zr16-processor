@@ -27,7 +27,7 @@ $ git clone https://github.com/victorpreuss/zr16-processor.git
 To run a testbench, first you need to run the following commands to create a Makefile for the module's testbench:
 ```
 $ cd zr16-processor
-# create the project hierarchy for ghdl
+# scan and parse the files to create ghdl project hierarchy
 $ ghdl -i --std=08 --workdir=work src/*.vhd tb/*.vhd
 # change module_tb for the desired module (e.g.: control_unit_tb)
 $ ghdl --gen-makefile --std=08 --workdir=work -Plib module_tb > Makefile
@@ -41,17 +41,46 @@ To visualize the waveform saved in the /etc/waves directory, use:
 ```
 $ gtkwave ../etc/waves/module_tb.vcd &
 ```
-The top level module used for simulation is named **main.vhd**. It implements the whole processor,
+The top level module used for simulation is named **src/main.vhd**. It implements the whole processor, therefore, the stimulus used during the simulation comes from the binary code saved inside **src/rom.vhd**.
 The same process can be used to run the simulation of the top level module, which is called **main**:
 ```
-# setup
+# simulation setup
 $ ghdl -i --std=08 --workdir=work src/*.vhd tb/*.vhd
 $ ghdl --gen-makefile --std=08 --workdir=work -Plib main > Makefile
 # use 'make run' everytime the code is updated
 $ make run GHDLRUNFLAGS="--stop-time=time --vcd=./etc/waves/main.vcd"
-# after a new 'make run' just refresh the gtkwave screen
+# after a new 'make run' simply refresh the gtkwave screen
 $ gtkwave ../etc/waves/main.vcd &
 ```
+The binary code running on the processor during the simulation can be changed using the compiler for ZR16 processor instruction set ([download here](http://w3.ufsm.br/smdh/downloads.php)).
+To automate the deployment of different codes inside the implemented processor, the script **scripts/run.py** was developed. You can pass as an argument, the Assembly/C code to be deployed and the amount of simulation time desired. The scripts automatically compiles the the code, store it inside **src/rom.vhd** and run the ghdl simulation. Check an example:
+```
+$ cd scripts
+$ ./run.py -f ../etc/code/main.c -t 20us
+```
+Inside the folder **etc/codes**, there are some examples of ZR16 Assembly and C codes.
+
+The script **scrtips/run.py** assumes that you downloaded the compilers and pasted them inside the folder **zr16-processor/etc/compiler**. The files that you must paste inside this folder are:
+- ZR16_Compiler.exe (Assembly compiler)
+- ZR16_C_Compiler.exe (C compiler)
+- ZR16_Compiler_DLL.dll
+
+Those files were not shipped in the repository since they belong to SMDH and you can download them from their website ([here](http://w3.ufsm.br/smdh/downloads.php)).
+It also assumes that you have [Wine](https://www.winehq.org/) installed (since the compilers were developed for Windows). You can install it by typing:
+```
+$ sudo apt-get install wine
+```
+
+There are also other scripts to simplify the simulation and/or hardware deployment:
+- For simulation:
+	- compile.sh - Compile an assembly code given as input argument
+	- ccompile.sh - Compile a C code given as input argument
+	- genrom.py - Takes a compiled binary file (.stringhex) for ZR16 and paste it into **src/rom.vhd**
+- For hardware deployment:
+	- upload_to_flash.sh - upload the FPGA binary to the flash memory chip in the Mojo board (requires [mojo-loader](https://github.com/embmicro/mojo-loader))
+	- upload_to_ram.sh - upload the FPGA binary to the FPGA volatile memory (also requires [mojo-loader](https://github.com/embmicro/mojo-loader))
+	- serialcomm.py - serial communication with FPGA to get the registers and RAM memory data (debug)
+
 ### HW Prerequisites
 
 
@@ -72,24 +101,15 @@ It contains all the fundamental block displayed on SDMH power point presentation
 
 ### Instructions
 
-## Author
+### What is missing?
 
+## Authors
+- **Victor Hugo Bueno Preuss** - *Initial Work*
+	- Postgraduate Student in UFSC - Electrical Engineering Department
+	- email: victor.preuss@posgrad.ufsc.br
 ## License
 
 ## Acknowledgements
 
-Thanks to the folks at Santa Maria DH who developed the ZR16S08 microprocessor and provide a nice documentation about their processor.
-Also a special thanks for professor Eduardo Bezerra who came up with the project idea and helped with insights throughout the implementation.
-
-
-
-Important commands:
-
-$ ghdl -i --std=08 --workdir=work tb/*.vhd src/*.vhd
-$ ghdl -m --std=08 --workdir=work -Plib "top module"
-$ ghdl --gen-makefile --std=08 --workdir=work -Plib "top module" > Makefile
-$ make run -GHDLRUNFLAGS="--stop-time=200ns --vcd=./etc/waveform.vcd"
-$ gtkwave ./etc/waveform.vcd &
-
-The -i option scan, parse and add the files to the library without analyzing
-The -m option analyze and compile the design for simulation
+Great thanks to the folks at Santa Maria DH who developed the ZR16S08 microprocessor and provide a nice documentation about it. (**That's brazillian technology! Brilliant!**)
+Also a special thanks for professor Eduardo Augusto Bezerra who came up with the project idea and helped with insights throughout the implementation.
