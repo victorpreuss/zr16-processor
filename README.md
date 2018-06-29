@@ -1,13 +1,14 @@
 
 # ZR16-processor
 
- VHDL implementation of the processor contained in the ZR16S08 microcontroller  developed by SMDH/Chipus.
-![Block diagram of implemented ZR16 processor](https://imgur.com/1Gfiahf)
+ VHDL implementation of the processor contained in the ZR16S08 microcontroller developed by SMDH/Chipus.
 
 ## Getting Started
+
 These instructions should enable you to get up and running with the simulation of the ZR16 processor ([datasheet](http://w3.ufsm.br/smdh/files/ZR16S08_datasheet.pdf)). It also includes instructions to synthesize the code and deploy it on a Spartan 6 Xilinx FPGA using the [Mojo Board](https://embeddedmicro.com/products/mojo-v3).
 
 ### SW Prerequisites
+
 For the digital simulation of the individual modules and the top-level, the open-source VHDL simulator GHDL was used. GTKWave was used to visualize the generated waveforms. To install GHDL and GTKWave:
 ```
 $ sudo apt-get install ghdl gtkwave
@@ -55,9 +56,15 @@ $ gtkwave ../etc/waves/main.vcd &
 
 
 
-## Deploying on the Mojo board
+### Deploying on the Mojo board
 
-## Introduction to ZR16S08 processor
+## The ZR16 processor
+
+This is the block diagram of the current implementation of ZR16 processor.
+
+![Block diagram of implemented ZR16 processor](https://i.imgur.com/1Gfiahf.png)
+
+It contains all the fundamental block displayed on SDMH power point presentation.
 
 ### Registers
 
