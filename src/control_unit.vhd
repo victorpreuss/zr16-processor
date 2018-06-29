@@ -346,6 +346,8 @@ begin
                 else
                     state_d <= CALL_ADDR_1;
                 end if;
+            else
+                state_d <= JMP_END;
             end if;
         elsif (opcode = RET and instruction(7) = '1') then
             if (state_q = RET_ADDR_1) then

@@ -120,9 +120,9 @@ begin
             counter <= 0;
         elsif (rising_edge(clk)) then
             if (stackctrl = "01") then
-                r13stack(top) <= r13;
-                r14stack(top) <= r14;
-                r15stack(top) <= r15;
+                r13stack(top) <= rf(13);
+                r14stack(top) <= rf(14);
+                r15stack(top) <= rf(15);
                 if (counter < 3) then
                     counter <= counter + 1;
                 end if;

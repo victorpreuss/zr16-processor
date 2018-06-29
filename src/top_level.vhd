@@ -149,6 +149,7 @@ begin
         rw      => regrw,
         addro   => addrmodeo,
         pcctrl  => pcctrl,
+        stackctrl => stackctrl,
         in1     => regorig,
         in2     => regdest,
         alu     => aluout,
